@@ -1,0 +1,68 @@
+---
+title: "trab1"
+output: html_document
+date: '2022-04-01'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Descrição do conjunto
+i) local onde foi obtido, (iii) contexto do conjunto de dados, (iii) dicionário dos dados
+(descrição de cada coluna), e (iv) tipos de dado de cada atributo.
+[] TODO
+
+# Inicialização
+```{r}
+library(tidyverse)
+
+```
+
+
+# Importação
+A ingestão dos dados foi realizada pegando uma porção dos conjuntos de dados pois este é muito grande para ser importado e processado.
+```{r}
+file <- 'enem/DADOS/MICRODADOS_ENEM_2020.csv'
+enem.df <- as.data.frame(read_delim(file, n_max = 1000000, delim=";", col_names = TRUE))
+```
+# Pré-Processamento
+
+## Verificação de possíveis atributos redundantes
+
+```{r}
+enem.df_numeric <- enem.df %>% select(where(is.numeric)) %>% drop_na()
+
+medidas <- function(vetor1,vetor2){
+  corr_medida <- cor(vetor1,vetor2,  use = "complete.obs")
+  det_medida <- cor(vetor1,vetor2,  use = "complete.obs") ^2
+  lista_medidas <- list("correlacao"= corr_medida, "determinacao"= det_medida)
+  lista_medidas
+}
+
+calculo_redundante <- function(dados){
+  for (col1 in colnames(dados)) {
+    for(col2 in colnames(dados)){
+      if (col1 == col2) {
+        next
+      }
+      li_med <- medidas(dados[,col1], dados[,col2])
+      
+      # Retornar apenas atributos com valores relevantes
+      #if (as.numeric(li_med$determinacao) > 0.8 || as.numeric(li_med$correlacao) > 0.8 ){
+      print(paste(col1, "::", col2))
+      print(paste(li_med))
+      #}
+      }
+    }
+  }
+
+head(calculo_redundante(enem.df_numeric))
+
+
+```
+
+
+
+
+
