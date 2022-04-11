@@ -30,6 +30,8 @@ enem.df <- read_delim(file, n_max = 1000000, delim=";", col_names = TRUE)
 
 ## Verificação de possíveis atributos redundantes
 Para o calculo de covariancia, é necessário dropar colunas com valores constantes e tratar casos com desvio padrão 0 e com valores NA. 
+[]TODO: variaveis nominais
+
 ```{r}
 enem.df_numeric <- as.data.frame(enem.df %>% select(where(is.numeric), -NU_ANO))
 
@@ -49,6 +51,13 @@ medidas <- function(vetor1,vetor2){
   lista_medidas
 }
 
+resultado <- tibble(
+  colu1= character(),
+  colu2= character(),
+  r= numeric(),
+  R2=numeric()
+)
+
 calculo_redundante <- function(dados){
   for (col1 in colnames(dados)) {
     for(col2 in colnames(dados)){
@@ -56,25 +65,37 @@ calculo_redundante <- function(dados){
         next
       }
       li_med <- medidas(dados[,col1], dados[,col2])
-      
+
       #Retornar apenas atributos com valores relevantes
       if(!is.na(li_med$correlacao) & !is.na(li_med$determinacao)){
       if(li_med$correlacao > 0.7 | li_med$correlacao < -0.7 | li_med$determinacao > 0.7){
-          print(paste(col1, "::", col2))
-          print(paste(li_med))
-        
+        resultado <- add_row(resultado, colu1=col1, colu2=col2, r=li_med$correlacao,R2=li_med$determinacao)
+        #print(paste(col1, "::", col2))
+          #print(paste(li_med))
+
       }
         }
-      
+
       }
-    }
+  }
+  resultado<- resultado[!duplicated(apply(resultado,1,function(x) paste(sort(x),collapse=''))),]
+   resultado <- resultado %>% arrange(desc(r), desc(R2))
+  return(resultado)
   }
 
-calculo_redundante(enem.df_numeric)
-
+resultado <- calculo_redundante(enem.df_numeric)
+resultado
 
 ```
-Através do resultado, é possível observar que os atributos TP_PRESENCA_CH e  TP_PRESENCA_LC, TP_PRESENCA_MT e TP_PRESENCA_CN possuem r e R² iguais a um. Isso significa que todos os valores são exatamente iguais. Essa situação faz sentido pois as provas de linguagens e códigos e ciências humanas, e ciencias da natureza e matemática são realizadas no mesmo dia.
+Através do resultado, é possível observar que os atributos TP_PRESENCA_CH e  TP_PRESENCA_LC, TP_PRESENCA_MT e TP_PRESENCA_CN possuem r e R² iguais a um. Isso significa que todos os valores são exatamente iguais. Essa situação faz sentido pois as provas de linguagens e códigos e ciências humanas, e ciencias da natureza e matemática são realizadas no mesmo dia. Além disso os atributos CO_MUNICIPIO_PROVA e CO_UF_PROVA possuem um valor bem próximo de 1 sendo 0.99 para o r e 0.99 para o R².
+Portando, para esses atributos a decisão é remover um de cada par pois seus valores são exatamente iguais ou muito próximos. 
+Ainda analisando os coeficientes, é possível entender que 
+
+### Atributos categoricos
+```{r}
+
+```
+
 
 
 
