@@ -22,16 +22,23 @@ Os dados foram obtidos através da plataforma oficial do Governo Federal e podem
 
 ```{r}
 library(tidyverse)
-
+library(data.table)
 ```
 
 # Importação
 
-Considerando que o dataset completo possui cerca de 2GB de dados, foram carregadas apenas as 1.000.000 primeiras linhas, já que o dataset inteiro pode não caber em memória em diversas máquinas.
+Considerando que o dataset completo possui cerca de 2GB de dados, foram carregadas apenas as 2.000.000 primeiras linhas, já que o dataset inteiro pode não caber em memória em diversas máquinas.
 
 ```{r}
 file <- 'enem/DADOS/MICRODADOS_ENEM_2020.csv'
-enem.df <- read_delim(file, n_max = 1000000, delim=";", col_names = TRUE,  locale = locale(encoding = "UTF-8"))
+enem.df <- fread(input=file,
+           integer64='character',
+           encoding = "Latin-1",
+           quote = FALSE,
+           na.strings = "",
+           nrows=1000000)
+
+enem.df
 ```
 
 # Pré-Processamento
@@ -357,3 +364,24 @@ rlt_df_original
 ```
 
 [ ] TODO: analisar e comparar as tabelas produzidas, rlt_norms e rlt_df_original se os coeficientes estão parecidos
+
+## Manipulação de dados faltantes
+
+Primeiramente, vamos analisar o nosso dataset para encontrar quais e quantos são os dados faltantes:
+
+```{r}
+# conta a quantidade de dados NA
+na_count <- colSums(is.na(enem.df)) %>%
+  as.data.frame()
+
+names(na_count) <- c("count")
+
+na_count <- filter(na_count, count > 0) %>%
+  mutate(percentage = count * 100 / nrow(enem.df))
+
+na_count
+```
+
+Apesar de incrivelmente alto, esse número condiz com os dados do INEP, que afirma que em torno de 48% dos inscritos não compareceram à prova. Vale lembrar que essa aplicação ocorreu em janeiro de 2021, época em que a pandemia de coronavírus ainda era severa no Brasil.
+
+[ ] TODO Igor: completar inputação de dados faltantes
