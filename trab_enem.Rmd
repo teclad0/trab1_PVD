@@ -13,14 +13,13 @@ i) local onde foi obtido, (iii) contexto do conjunto de dados, (iii) dicionário
 (descrição de cada coluna), e (iv) tipos de dado de cada atributo.
 [] TODO
 
-# Inicialização
+### Inicialização
 ```{r}
 library(tidyverse)
 
 ```
 
-
-# Importação
+## Importação
 A ingestão dos dados foi realizada pegando uma porção dos conjuntos de dados pois este é muito grande para ser importado e processado.
 ```{r}
 file <- 'enem/DADOS/MICRODADOS_ENEM_2020.csv'
@@ -32,7 +31,9 @@ enem.df <- read_delim(file, n_max = 1000000, delim=";", col_names = TRUE,  local
 Para o calculo de covariancia, é necessário dropar colunas com valores constantes e tratar casos com desvio padrão 0 e com valores NA. 
 [ x ]TODO: variaveis nominais
 
+### Atributos numéricos
 ```{r}
+# Tirar o nu_inscricao?
 enem.df_numeric <- as.data.frame(enem.df %>% select(where(is.numeric), -NU_ANO))
 
 cor_fun<- function(x,y){
@@ -51,14 +52,13 @@ medidas <- function(vetor1,vetor2){
   lista_medidas
 }
 
-resultado <- tibble(
+calculo_redundante <- function(dados){
+  resultado <- tibble(
   colu1= character(),
   colu2= character(),
   r= numeric(),
   R2=numeric()
-)
-
-calculo_redundante <- function(dados){
+  )
   for (col1 in colnames(dados)) {
     for(col2 in colnames(dados)){
       if (col1 == col2) {
@@ -70,8 +70,6 @@ calculo_redundante <- function(dados){
       if(!is.na(li_med$correlacao) & !is.na(li_med$determinacao)){
       if(li_med$correlacao > 0.7 | li_med$correlacao < -0.7 | li_med$determinacao > 0.7){
         resultado <- add_row(resultado, colu1=col1, colu2=col2, r=li_med$correlacao,R2=li_med$determinacao)
-        #print(paste(col1, "::", col2))
-          #print(paste(li_med))
 
       }
         }
@@ -83,47 +81,38 @@ calculo_redundante <- function(dados){
   return(resultado)
   }
 
-resultado <- calculo_redundante(enem.df_numeric)
-resultado
+rlt_redundante <- calculo_redundante(enem.df_numeric)
+rlt_redundante
 
 ```
 Através do resultado, é possível observar que os atributos TP_PRESENCA_CH e  TP_PRESENCA_LC, TP_PRESENCA_MT e TP_PRESENCA_CN possuem r e R² iguais a um. Isso significa que todos os valores são exatamente iguais. Essa situação faz sentido pois as provas de linguagens e códigos e ciências humanas, e ciencias da natureza e matemática são realizadas no mesmo dia. Além disso os atributos CO_MUNICIPIO_PROVA e CO_UF_PROVA possuem um valor bem próximo de 1 sendo 0.99 para o r e 0.99 para o R².
 Portando, para esses atributos a decisão é remover um de cada par pois seus valores são exatamente iguais ou bastante próximos. 
 
 [ ] TODO: DROPAR OS ATRIBUTOS CITADOS e ANO
+//Pode-se observar que o é útil para identificar padrões nos dados (e.g., como os dados de um atributo “segue” os dados de
+outro atributo), enquanto o é interessante para mensurar a compatibilidade entre os valores.
 
 ### Atributos categoricos
 ```{r}
-#1] "TP_SEXO"            "NO_MUNICIPIO_ESC"  
-#  [3] "SG_UF_ESC"          "NO_MUNICIPIO_PROVA"
-#  [5] "SG_UF_PROVA"        "TX_RESPOSTAS_CN"   
-#  [7] "TX_RESPOSTAS_CH"    "TX_RESPOSTAS_LC"   
-#  [9] "TX_RESPOSTAS_MT"    "TX_GABARITO_CN"    
-# [11] "TX_GABARITO_CH"     "TX_GABARITO_LC"    
-# [13] "TX_GABARITO_MT"     "Q001"              
-# [15] "Q002"               "Q003"              
-# [17] "Q004"               "Q006"              
-# [19] "Q007"               "Q008"              
-# [21] "Q009"               "Q010"              
-# [23] "Q011"               "Q012"              
-# [25] "Q013"               "Q014"              
-# [27] "Q015"               "Q016"              
-# [29] "Q017"               "Q018"              
-# [31] "Q019"               "Q020"              
-# [33] "Q021"               "Q022"              
-# [35] "Q023"               "Q024"              
-# [37] "Q025" 
+enem.df_list <- enem.df %>%
+  select(where(is.character)) %>%
+  group_by(Q007) %>%
+  slice_head(n=500) %>%
+  group_split(.keep=FALSE) 
 
 
-set.seed(1)
-enem.df_subconjunto <- enem.df %>% slice_sample(n= 5000) %>% select(where(is.character), -NU_ANO, -TX_RESPOSTAS_CN, -TX_RESPOSTAS_CH, -TX_RESPOSTAS_LC, -TX_RESPOSTAS_MT)
+enem.df_list
+
+```
+
+
+```{r}
 
 chisq <- function(dados){
-  set.seed(1)
-  
   resultado <- tibble(
   colu1= character(),
   colu2= character(),
+  x2 = numeric(),
   p_value= numeric()
    )
   
@@ -132,31 +121,29 @@ chisq <- function(dados){
       if (col1 == col2 ) {
         next
       }
-      print(col1)
-      print(col2)
-      #li_med <- medidas(dados[,col1], dados[,col2])
-      p <-  chisq.test(unlist(dados[,col1]), unlist(dados[,col2]), simulate.p.value = TRUE)$p.value
-      #Retornar apenas atributos com valores relevantes
-      #if(!is.na(li_med$correlacao) & !is.na(li_med$determinacao)){
-      #if(li_med$correlacao > 0.7 | li_med$correlacao < -0.7 | li_med$determinacao > 0.7){
-      resultado <- add_row(resultado, colu1=col1, colu2=col2, p_value=p)
-        #print(paste(col1, "::", col2))
-          #print(paste(li_med))
-
+      
+      #print(paste(col1, col2))
+      chisq <- chisq.test(unlist(dados[,col1]), unlist(dados[,col2]), simulate.p.value = TRUE)
+      p <-  chisq$p.value
+      xsq <- chisq$statistic
+      
+      resultado <- add_row(resultado, colu1=col1, colu2=col2, x2= xsq, p_value=p)
+      
       }
       }
   resultado<- resultado[!duplicated(apply(resultado,1,function(x) paste(sort(x),collapse=''))),]
-  # resultado <- resultado %>% arrange(desc(r), desc(R2))
-  return(resultado)
+  resultado <- resultado %>% arrange(p_value)
+  resultado
 }
 
-rst_chisq <- chisq(enem.df_subconjunto)
-rst_chisq <- rst_chisq[!duplicated(apply(rst_chisq,1,function(x) paste(sort(x),collapse=''))),]
-rst_chisq
-#chisq.test(enem.df_subconjunto$TP_SEXO, enem.df_subconjunto$SG_UF_ESC, simulate.p.value = TRUE)
-# p-value para 50000 samples = 0.0004998
-# p-value para 5000 samples = 0.9415
-#chisq.test(enem.df_subconjunto$SG_UF_ESC, enem.df_subconjunto$SG_UF_PROVA, simulate.p.value = TRUE)$p.value
+rlt_chisq_1 <- chisq(enem.df_list[[2]])
+rlt_chisq_1
+#rlt_chisq_2
+#rlt_chisq_3
+#rlt_chisq_4
+#rlt_chisq_5
+  
+
 
 ```
 
@@ -164,14 +151,19 @@ rst_chisq
 [] TODO **Realizar o teste para cada subconjunto de dados e dividir por categoria **
 
 
+// os atributos de TX_GABARITO_* se repetem, pois eh uma taxa de gabarito pra cada tipo de prova, por volta de 14 tipos de provas, ao inves de ter um vetor enorme talvez substituir por um codigo ou categoria
+
 ## Normalização
 
 A normalização será realizada nos atributos NU_NOTA_CH e NU_NOTA_MT que representam, respectivamente, a nota da prova de ciências humanas e a nota de redação. 
 O conjunto de dados possui diversos atributos sem significado semantico(n sei se eh essa a palavra), que apresentam um significado específico, como código de provas e código de municipio.
 
-
+### Aplicação no atributos NU_NOTA_CH e NU_NOTA_MT
+No bloco abaixo, as funções z score e min-max são aplicadas nos atributos escolhidos
+e os resultados são adicionados a um novo conjunto, chamado *enem.df_numeric_norm*,  derivado do conjunto original.
 ```{r}
 head(enem.df_numeric,50)
+options(scipen = 999) 
 
 z_score_norm <- function(x) {
   (x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
@@ -191,11 +183,15 @@ NU_NOTA_MT_norm01 <- min_max_norm(enem.df$NU_NOTA_MT)
 # Colocar no numerico pq vai precisar rodar o r e R² 
 enem.df_numeric_norm <- enem.df_numeric %>% select(-NU_NOTA_CH, -NU_NOTA_MT) %>% mutate(NU_NOTA_CH_normz, NU_NOTA_CH_norm01, NU_NOTA_MT_normz, NU_NOTA_MT_norm01)
 
-summary(enem.df_numeric)
-head(enem.df_numeric_norm,50)
-summary(enem.df_numeric_norm)
+head(enem.df_numeric_norm)
+```
 
-# Realizar testes para atributos redundantes
+A seguir são realizado teste para analisar os efeitos da normalização perante os
+atributos redundantes.
+
+```{r}
+
+# Teste com atributos numéricos realizado no conjunto com os atributos normalizados
 
 cor_fun<- function(x,y){
   val <- tryCatch(cor(x, y,use="complete.obs"), error = function(e) e, warning = function(w) w)
@@ -206,55 +202,39 @@ cor_fun<- function(x,y){
   }
 }
 
-medidas <- function(vetor1,vetor2){
-  corr_medida <- cor_fun(vetor1,vetor2)
-  det_medida <- cor_fun(vetor1,vetor2) ^2
-  lista_medidas <- list("correlacao"= corr_medida, "determinacao"= det_medida)
-  lista_medidas
-}
-
-
-
 calculo_redundante_norm <- function(dados){
-  
   resultado <- tibble(
   colu1= character(),
   colu2= character(),
   r= numeric(),
   R2=numeric()
-)
+  )
 
-  #for (col1 in colnames(dados)) {
   for(col1 in c("NU_NOTA_CH_normz", "NU_NOTA_CH_norm01", "NU_NOTA_MT_normz", "NU_NOTA_MT_norm01")){     
     for(col2 in colnames(dados)){
       if (col1 == col2) {
         next
       }
-     
       li_med <- medidas(dados[,col1], dados[,col2])
       
-      #Retornar apenas atributos com valores relevantes
       if(!is.na(li_med$correlacao) & !is.na(li_med$determinacao)){
-      #if(li_med$correlacao > 0.7 | li_med$correlacao < -0.7 | li_med$determinacao > 0.7){
         resultado <- add_row(resultado, colu1=col1, colu2=col2, r=li_med$correlacao,R2=li_med$determinacao)
-        #print(paste(col1, "::", col2))
-        #print(paste(li_med))
-
-      #}
         }
-
       }
   }
   resultado<- resultado[!duplicated(apply(resultado,1,function(x) paste(sort(x),collapse=''))),]
    resultado <- resultado %>% arrange(desc(r), desc(R2))
   return(resultado)
   }
-options(scipen = 999) 
 
-rlt_norms <- calculo_redundante_norm(enem.df_numeric_norm)
-rlt_norms
 
-# funçao adaptada 
+rlt_redun_norms <- calculo_redundante_norm(enem.df_numeric_norm)
+rlt_redun_norms
+
+```
+
+```{r}
+# Teste com atributos numéricos realizado no conjunto com os atributos originais, apenas observando o comportamento em comparação aos atributos escolhidos
 
 calculo_redundante_notas <- function(dados){
   resultado <- tibble(
@@ -264,7 +244,6 @@ calculo_redundante_notas <- function(dados){
   R2=numeric()
 )
 
-  #for (col1 in colnames(dados)) {
   for(col1 in c("NU_NOTA_CH", "NU_NOTA_MT")){     
     for(col2 in colnames(dados)){
       if (col1 == col2) {
@@ -273,16 +252,9 @@ calculo_redundante_notas <- function(dados){
      
       li_med <- medidas(dados[,col1], dados[,col2])
       
-      #Retornar apenas atributos com valores relevantes
       if(!is.na(li_med$correlacao) & !is.na(li_med$determinacao)){
-      #if(li_med$correlacao > 0.7 | li_med$correlacao < -0.7 | li_med$determinacao > 0.7){
         resultado <- add_row(resultado, colu1=col1, colu2=col2, r=li_med$correlacao,R2=li_med$determinacao)
-        #print(paste(col1, "::", col2))
-        #print(paste(li_med))
-
-      #}
         }
-
       }
   }
   resultado<- resultado[!duplicated(apply(resultado,1,function(x) paste(sort(x),collapse=''))),]
@@ -290,8 +262,11 @@ calculo_redundante_notas <- function(dados){
   return(resultado)
 }
 
-rlt_df_original <- calculo_redundante_notas(enem.df_numeric)
-rlt_df_original
+rlt_redun_original <- calculo_redundante_notas(enem.df_numeric)
+rlt_redun_original
 
 ```
+
+
 [ ] TODO: analisar e comparar as tabelas produzidas, rlt_norms e rlt_df_original se os coeficientes estão parecidos
+[ ] TODO: teste para atributos categoricos

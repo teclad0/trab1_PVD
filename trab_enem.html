@@ -371,9 +371,8 @@ pre code {
 dicionário dos dados (descrição de cada coluna), e (iv) tipos de dado de
 cada atributo. [] TODO</li>
 </ol>
-</div>
-<div id="inicialização" class="section level1">
-<h1>Inicialização</h1>
+<div id="inicialização" class="section level3">
+<h3>Inicialização</h3>
 <pre class="r"><code>library(tidyverse)</code></pre>
 <pre><code>## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.1 ──</code></pre>
 <pre><code>## ✓ ggplot2 3.3.5     ✓ purrr   0.3.4
@@ -384,12 +383,12 @@ cada atributo. [] TODO</li>
 ## x dplyr::filter() masks stats::filter()
 ## x dplyr::lag()    masks stats::lag()</code></pre>
 </div>
-<div id="importação" class="section level1">
-<h1>Importação</h1>
+<div id="importação" class="section level2">
+<h2>Importação</h2>
 <p>A ingestão dos dados foi realizada pegando uma porção dos conjuntos
 de dados pois este é muito grande para ser importado e processado.</p>
 <pre class="r"><code>file &lt;- &#39;enem/DADOS/MICRODADOS_ENEM_2020.csv&#39;
-enem.df &lt;- read_delim(file, n_max = 1000000, delim=&quot;;&quot;, col_names = TRUE)</code></pre>
+enem.df &lt;- read_delim(file, n_max = 1000000, delim=&quot;;&quot;, col_names = TRUE,  locale = locale(encoding = &quot;UTF-8&quot;))</code></pre>
 <pre><code>## Rows: 1000000 Columns: 76
 ## ── Column specification ────────────────────────────────────────────────────────
 ## Delimiter: &quot;;&quot;
@@ -399,14 +398,18 @@ enem.df &lt;- read_delim(file, n_max = 1000000, delim=&quot;;&quot;, col_names =
 ## ℹ Use `spec()` to retrieve the full column specification for this data.
 ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.</code></pre>
 </div>
+</div>
 <div id="pré-processamento" class="section level1">
 <h1>Pré-Processamento</h1>
 <div id="verificação-de-possíveis-atributos-redundantes" class="section level2">
 <h2>Verificação de possíveis atributos redundantes</h2>
 <p>Para o calculo de covariancia, é necessário dropar colunas com
-valores constantes e tratar casos com desvio padrão 0 e com valores
-NA.</p>
-<pre class="r"><code>enem.df_numeric &lt;- as.data.frame(enem.df %&gt;% select(where(is.numeric), -NU_ANO))
+valores constantes e tratar casos com desvio padrão 0 e com valores NA.
+[ x ]TODO: variaveis nominais</p>
+<div id="atributos-numéricos" class="section level3">
+<h3>Atributos numéricos</h3>
+<pre class="r"><code># Tirar o nu_inscricao?
+enem.df_numeric &lt;- as.data.frame(enem.df %&gt;% select(where(is.numeric), -NU_ANO))
 
 cor_fun&lt;- function(x,y){
   val &lt;- tryCatch(cor(x, y), error = function(e) e, warning = function(w) w)
@@ -425,65 +428,878 @@ medidas &lt;- function(vetor1,vetor2){
 }
 
 calculo_redundante &lt;- function(dados){
+  resultado &lt;- tibble(
+  colu1= character(),
+  colu2= character(),
+  r= numeric(),
+  R2=numeric()
+  )
   for (col1 in colnames(dados)) {
     for(col2 in colnames(dados)){
       if (col1 == col2) {
         next
       }
       li_med &lt;- medidas(dados[,col1], dados[,col2])
-      
+
       #Retornar apenas atributos com valores relevantes
       if(!is.na(li_med$correlacao) &amp; !is.na(li_med$determinacao)){
       if(li_med$correlacao &gt; 0.7 | li_med$correlacao &lt; -0.7 | li_med$determinacao &gt; 0.7){
-          print(paste(col1, &quot;::&quot;, col2))
-          print(paste(li_med))
-        
+        resultado &lt;- add_row(resultado, colu1=col1, colu2=col2, r=li_med$correlacao,R2=li_med$determinacao)
+
       }
         }
-      
+
       }
-    }
+  }
+  resultado&lt;- resultado[!duplicated(apply(resultado,1,function(x) paste(sort(x),collapse=&#39;&#39;))),]
+   resultado &lt;- resultado %&gt;% arrange(desc(r), desc(R2))
+  return(resultado)
   }
 
-calculo_redundante(enem.df_numeric)</code></pre>
-<pre><code>## [1] &quot;TP_FAIXA_ETARIA :: TP_ANO_CONCLUIU&quot;
-## [1] &quot;0.760674082062382&quot; &quot;0.578625059121448&quot;
-## [1] &quot;TP_ANO_CONCLUIU :: TP_FAIXA_ETARIA&quot;
-## [1] &quot;0.760674082062382&quot; &quot;0.578625059121448&quot;
-## [1] &quot;CO_MUNICIPIO_PROVA :: CO_UF_PROVA&quot;
-## [1] &quot;0.999865342154917&quot; &quot;0.999730702442568&quot;
-## [1] &quot;CO_UF_PROVA :: CO_MUNICIPIO_PROVA&quot;
-## [1] &quot;0.999865342154917&quot; &quot;0.999730702442568&quot;
-## [1] &quot;TP_PRESENCA_CN :: TP_PRESENCA_CH&quot;
-## [1] &quot;0.931731102695995&quot; &quot;0.868122847731096&quot;
-## [1] &quot;TP_PRESENCA_CN :: TP_PRESENCA_LC&quot;
-## [1] &quot;0.931731102695995&quot; &quot;0.868122847731096&quot;
-## [1] &quot;TP_PRESENCA_CN :: TP_PRESENCA_MT&quot;
-## [1] &quot;1&quot; &quot;1&quot;
-## [1] &quot;TP_PRESENCA_CH :: TP_PRESENCA_CN&quot;
-## [1] &quot;0.931731102695995&quot; &quot;0.868122847731096&quot;
-## [1] &quot;TP_PRESENCA_CH :: TP_PRESENCA_LC&quot;
-## [1] &quot;1&quot; &quot;1&quot;
-## [1] &quot;TP_PRESENCA_CH :: TP_PRESENCA_MT&quot;
-## [1] &quot;0.931731102695995&quot; &quot;0.868122847731096&quot;
-## [1] &quot;TP_PRESENCA_LC :: TP_PRESENCA_CN&quot;
-## [1] &quot;0.931731102695995&quot; &quot;0.868122847731096&quot;
-## [1] &quot;TP_PRESENCA_LC :: TP_PRESENCA_CH&quot;
-## [1] &quot;1&quot; &quot;1&quot;
-## [1] &quot;TP_PRESENCA_LC :: TP_PRESENCA_MT&quot;
-## [1] &quot;0.931731102695995&quot; &quot;0.868122847731096&quot;
-## [1] &quot;TP_PRESENCA_MT :: TP_PRESENCA_CN&quot;
-## [1] &quot;1&quot; &quot;1&quot;
-## [1] &quot;TP_PRESENCA_MT :: TP_PRESENCA_CH&quot;
-## [1] &quot;0.931731102695995&quot; &quot;0.868122847731096&quot;
-## [1] &quot;TP_PRESENCA_MT :: TP_PRESENCA_LC&quot;
-## [1] &quot;0.931731102695995&quot; &quot;0.868122847731096&quot;</code></pre>
+rlt_redundante &lt;- calculo_redundante(enem.df_numeric)
+rlt_redundante</code></pre>
+<pre><code>## # A tibble: 8 × 4
+##   colu1              colu2               r    R2
+##   &lt;chr&gt;              &lt;chr&gt;           &lt;dbl&gt; &lt;dbl&gt;
+## 1 TP_PRESENCA_CN     TP_PRESENCA_MT  1     1    
+## 2 TP_PRESENCA_CH     TP_PRESENCA_LC  1     1    
+## 3 CO_MUNICIPIO_PROVA CO_UF_PROVA     1.00  1.00 
+## 4 TP_PRESENCA_CN     TP_PRESENCA_CH  0.932 0.868
+## 5 TP_PRESENCA_CN     TP_PRESENCA_LC  0.932 0.868
+## 6 TP_PRESENCA_CH     TP_PRESENCA_MT  0.932 0.868
+## 7 TP_PRESENCA_LC     TP_PRESENCA_MT  0.932 0.868
+## 8 TP_FAIXA_ETARIA    TP_ANO_CONCLUIU 0.761 0.579</code></pre>
 <p>Através do resultado, é possível observar que os atributos
 TP_PRESENCA_CH e TP_PRESENCA_LC, TP_PRESENCA_MT e TP_PRESENCA_CN possuem
 r e R² iguais a um. Isso significa que todos os valores são exatamente
 iguais. Essa situação faz sentido pois as provas de linguagens e códigos
 e ciências humanas, e ciencias da natureza e matemática são realizadas
-no mesmo dia.</p>
+no mesmo dia. Além disso os atributos CO_MUNICIPIO_PROVA e CO_UF_PROVA
+possuem um valor bem próximo de 1 sendo 0.99 para o r e 0.99 para o R².
+Portando, para esses atributos a decisão é remover um de cada par pois
+seus valores são exatamente iguais ou bastante próximos.</p>
+<p>[ ] TODO: DROPAR OS ATRIBUTOS CITADOS e ANO //Pode-se observar que o
+é útil para identificar padrões nos dados (e.g., como os dados de um
+atributo “segue” os dados de outro atributo), enquanto o é interessante
+para mensurar a compatibilidade entre os valores.</p>
+</div>
+<div id="atributos-categoricos" class="section level3">
+<h3>Atributos categoricos</h3>
+<pre class="r"><code>enem.df_list &lt;- enem.df %&gt;%
+  select(where(is.character)) %&gt;%
+  group_by(Q007) %&gt;%
+  slice_head(n=500) %&gt;%
+  group_split(.keep=FALSE) 
+
+
+enem.df_list</code></pre>
+<pre><code>## &lt;list_of&lt;
+##   tbl_df&lt;
+##     TP_SEXO           : character
+##     NO_MUNICIPIO_ESC  : character
+##     SG_UF_ESC         : character
+##     NO_MUNICIPIO_PROVA: character
+##     SG_UF_PROVA       : character
+##     TX_RESPOSTAS_CN   : character
+##     TX_RESPOSTAS_CH   : character
+##     TX_RESPOSTAS_LC   : character
+##     TX_RESPOSTAS_MT   : character
+##     TX_GABARITO_CN    : character
+##     TX_GABARITO_CH    : character
+##     TX_GABARITO_LC    : character
+##     TX_GABARITO_MT    : character
+##     Q001              : character
+##     Q002              : character
+##     Q003              : character
+##     Q004              : character
+##     Q006              : character
+##     Q008              : character
+##     Q009              : character
+##     Q010              : character
+##     Q011              : character
+##     Q012              : character
+##     Q013              : character
+##     Q014              : character
+##     Q015              : character
+##     Q016              : character
+##     Q017              : character
+##     Q018              : character
+##     Q019              : character
+##     Q020              : character
+##     Q021              : character
+##     Q022              : character
+##     Q023              : character
+##     Q024              : character
+##     Q025              : character
+##   &gt;
+## &gt;[5]&gt;
+## [[1]]
+## # A tibble: 500 × 36
+##    TP_SEXO NO_MUNICIPIO_ESC SG_UF_ESC NO_MUNICIPIO_PROVA        SG_UF_PROVA
+##    &lt;chr&gt;   &lt;chr&gt;            &lt;chr&gt;     &lt;chr&gt;                     &lt;chr&gt;      
+##  1 F       Salvador         BA        &quot;Salvador&quot;                BA         
+##  2 F       &lt;NA&gt;             &lt;NA&gt;      &quot;Diamantina&quot;              MG         
+##  3 F       &lt;NA&gt;             &lt;NA&gt;      &quot;Cerro Largo&quot;             RS         
+##  4 F       &lt;NA&gt;             &lt;NA&gt;      &quot;Jo\xe3o Pessoa&quot;          PB         
+##  5 M       &lt;NA&gt;             &lt;NA&gt;      &quot;Fortaleza&quot;               CE         
+##  6 M       &lt;NA&gt;             &lt;NA&gt;      &quot;S\xe3o Paulo&quot;            SP         
+##  7 M       &lt;NA&gt;             &lt;NA&gt;      &quot;Eun\xe1polis&quot;            BA         
+##  8 F       &lt;NA&gt;             &lt;NA&gt;      &quot;Tr\xeas Lagoas&quot;          MS         
+##  9 M       &lt;NA&gt;             &lt;NA&gt;      &quot;Carpina&quot;                 PE         
+## 10 F       &lt;NA&gt;             &lt;NA&gt;      &quot;Vit\xf3ria da Conquista&quot; BA         
+## # … with 490 more rows, and 31 more variables: TX_RESPOSTAS_CN &lt;chr&gt;,
+## #   TX_RESPOSTAS_CH &lt;chr&gt;, TX_RESPOSTAS_LC &lt;chr&gt;, TX_RESPOSTAS_MT &lt;chr&gt;,
+## #   TX_GABARITO_CN &lt;chr&gt;, TX_GABARITO_CH &lt;chr&gt;, TX_GABARITO_LC &lt;chr&gt;,
+## #   TX_GABARITO_MT &lt;chr&gt;, Q001 &lt;chr&gt;, Q002 &lt;chr&gt;, Q003 &lt;chr&gt;, Q004 &lt;chr&gt;,
+## #   Q006 &lt;chr&gt;, Q008 &lt;chr&gt;, Q009 &lt;chr&gt;, Q010 &lt;chr&gt;, Q011 &lt;chr&gt;, Q012 &lt;chr&gt;,
+## #   Q013 &lt;chr&gt;, Q014 &lt;chr&gt;, Q015 &lt;chr&gt;, Q016 &lt;chr&gt;, Q017 &lt;chr&gt;, Q018 &lt;chr&gt;,
+## #   Q019 &lt;chr&gt;, Q020 &lt;chr&gt;, Q021 &lt;chr&gt;, Q022 &lt;chr&gt;, Q023 &lt;chr&gt;, Q024 &lt;chr&gt;, …
+## 
+## [[2]]
+## # A tibble: 500 × 36
+##    TP_SEXO NO_MUNICIPIO_ESC   SG_UF_ESC NO_MUNICIPIO_PROVA     SG_UF_PROVA
+##    &lt;chr&gt;   &lt;chr&gt;              &lt;chr&gt;     &lt;chr&gt;                  &lt;chr&gt;      
+##  1 F       &quot;V\xe1rzea Grande&quot; MT        &quot;V\xe1rzea Grande&quot;     MT         
+##  2 M       &quot;Buriti dos Lopes&quot; PI        &quot;Buriti dos Lopes&quot;     PI         
+##  3 F        &lt;NA&gt;              &lt;NA&gt;      &quot;Bel\xe9m&quot;             PA         
+##  4 F        &lt;NA&gt;              &lt;NA&gt;      &quot;Francisco Beltr\xe3o&quot; PR         
+##  5 F       &quot;Fortaleza&quot;        CE        &quot;Fortaleza&quot;            CE         
+##  6 F        &lt;NA&gt;              &lt;NA&gt;      &quot;Luzi\xe2nia&quot;          GO         
+##  7 F       &quot;Teresina&quot;         PI        &quot;Teresina&quot;             PI         
+##  8 F        &lt;NA&gt;              &lt;NA&gt;      &quot;Presidente Prudente&quot;  SP         
+##  9 F        &lt;NA&gt;              &lt;NA&gt;      &quot;Sorriso&quot;              MT         
+## 10 M       &quot;Maracana\xfa&quot;     CE        &quot;Maracana\xfa&quot;         CE         
+## # … with 490 more rows, and 31 more variables: TX_RESPOSTAS_CN &lt;chr&gt;,
+## #   TX_RESPOSTAS_CH &lt;chr&gt;, TX_RESPOSTAS_LC &lt;chr&gt;, TX_RESPOSTAS_MT &lt;chr&gt;,
+## #   TX_GABARITO_CN &lt;chr&gt;, TX_GABARITO_CH &lt;chr&gt;, TX_GABARITO_LC &lt;chr&gt;,
+## #   TX_GABARITO_MT &lt;chr&gt;, Q001 &lt;chr&gt;, Q002 &lt;chr&gt;, Q003 &lt;chr&gt;, Q004 &lt;chr&gt;,
+## #   Q006 &lt;chr&gt;, Q008 &lt;chr&gt;, Q009 &lt;chr&gt;, Q010 &lt;chr&gt;, Q011 &lt;chr&gt;, Q012 &lt;chr&gt;,
+## #   Q013 &lt;chr&gt;, Q014 &lt;chr&gt;, Q015 &lt;chr&gt;, Q016 &lt;chr&gt;, Q017 &lt;chr&gt;, Q018 &lt;chr&gt;,
+## #   Q019 &lt;chr&gt;, Q020 &lt;chr&gt;, Q021 &lt;chr&gt;, Q022 &lt;chr&gt;, Q023 &lt;chr&gt;, Q024 &lt;chr&gt;, …
+## 
+## [[3]]
+## # A tibble: 500 × 36
+##    TP_SEXO NO_MUNICIPIO_ESC     SG_UF_ESC NO_MUNICIPIO_PROVA     SG_UF_PROVA
+##    &lt;chr&gt;   &lt;chr&gt;                &lt;chr&gt;     &lt;chr&gt;                  &lt;chr&gt;      
+##  1 F       &lt;NA&gt;                 &lt;NA&gt;      &quot;Rio de Janeiro&quot;       RJ         
+##  2 M       Barcarena            PA        &quot;Barcarena&quot;            PA         
+##  3 F       &lt;NA&gt;                 &lt;NA&gt;      &quot;Caic\xf3&quot;             RN         
+##  4 M       &lt;NA&gt;                 &lt;NA&gt;      &quot;Goi\xe2nia&quot;           GO         
+##  5 M       Rio de Janeiro       RJ        &quot;Rio de Janeiro&quot;       RJ         
+##  6 F       &lt;NA&gt;                 &lt;NA&gt;      &quot;Petr\xf3polis&quot;        RJ         
+##  7 F       Colinas do Tocantins TO        &quot;Colinas do Tocantins&quot; TO         
+##  8 M       &lt;NA&gt;                 &lt;NA&gt;      &quot;Itaporanga d&#39;Ajuda&quot;   SE         
+##  9 F       &lt;NA&gt;                 &lt;NA&gt;      &quot;Recife&quot;               PE         
+## 10 F       &lt;NA&gt;                 &lt;NA&gt;      &quot;Aracaju&quot;              SE         
+## # … with 490 more rows, and 31 more variables: TX_RESPOSTAS_CN &lt;chr&gt;,
+## #   TX_RESPOSTAS_CH &lt;chr&gt;, TX_RESPOSTAS_LC &lt;chr&gt;, TX_RESPOSTAS_MT &lt;chr&gt;,
+## #   TX_GABARITO_CN &lt;chr&gt;, TX_GABARITO_CH &lt;chr&gt;, TX_GABARITO_LC &lt;chr&gt;,
+## #   TX_GABARITO_MT &lt;chr&gt;, Q001 &lt;chr&gt;, Q002 &lt;chr&gt;, Q003 &lt;chr&gt;, Q004 &lt;chr&gt;,
+## #   Q006 &lt;chr&gt;, Q008 &lt;chr&gt;, Q009 &lt;chr&gt;, Q010 &lt;chr&gt;, Q011 &lt;chr&gt;, Q012 &lt;chr&gt;,
+## #   Q013 &lt;chr&gt;, Q014 &lt;chr&gt;, Q015 &lt;chr&gt;, Q016 &lt;chr&gt;, Q017 &lt;chr&gt;, Q018 &lt;chr&gt;,
+## #   Q019 &lt;chr&gt;, Q020 &lt;chr&gt;, Q021 &lt;chr&gt;, Q022 &lt;chr&gt;, Q023 &lt;chr&gt;, Q024 &lt;chr&gt;, …
+## 
+## [[4]]
+## # A tibble: 500 × 36
+##    TP_SEXO NO_MUNICIPIO_ESC SG_UF_ESC NO_MUNICIPIO_PROVA SG_UF_PROVA
+##    &lt;chr&gt;   &lt;chr&gt;            &lt;chr&gt;     &lt;chr&gt;              &lt;chr&gt;      
+##  1 F       &lt;NA&gt;             &lt;NA&gt;      &quot;Corrente&quot;         PI         
+##  2 F       Rio do Sul       SC        &quot;Rio do Sul&quot;       SC         
+##  3 F       &lt;NA&gt;             &lt;NA&gt;      &quot;A\xe7ail\xe2ndia&quot; MA         
+##  4 F       &lt;NA&gt;             &lt;NA&gt;      &quot;Salvador&quot;         BA         
+##  5 F       &lt;NA&gt;             &lt;NA&gt;      &quot;Salvador&quot;         BA         
+##  6 F       &lt;NA&gt;             &lt;NA&gt;      &quot;Osvaldo Cruz&quot;     SP         
+##  7 F       &lt;NA&gt;             &lt;NA&gt;      &quot;Feira de Santana&quot; BA         
+##  8 M       Paracatu         MG        &quot;Paracatu&quot;         MG         
+##  9 F       &lt;NA&gt;             &lt;NA&gt;      &quot;Itaquaquecetuba&quot;  SP         
+## 10 M       &lt;NA&gt;             &lt;NA&gt;      &quot;Indaiatuba&quot;       SP         
+## # … with 490 more rows, and 31 more variables: TX_RESPOSTAS_CN &lt;chr&gt;,
+## #   TX_RESPOSTAS_CH &lt;chr&gt;, TX_RESPOSTAS_LC &lt;chr&gt;, TX_RESPOSTAS_MT &lt;chr&gt;,
+## #   TX_GABARITO_CN &lt;chr&gt;, TX_GABARITO_CH &lt;chr&gt;, TX_GABARITO_LC &lt;chr&gt;,
+## #   TX_GABARITO_MT &lt;chr&gt;, Q001 &lt;chr&gt;, Q002 &lt;chr&gt;, Q003 &lt;chr&gt;, Q004 &lt;chr&gt;,
+## #   Q006 &lt;chr&gt;, Q008 &lt;chr&gt;, Q009 &lt;chr&gt;, Q010 &lt;chr&gt;, Q011 &lt;chr&gt;, Q012 &lt;chr&gt;,
+## #   Q013 &lt;chr&gt;, Q014 &lt;chr&gt;, Q015 &lt;chr&gt;, Q016 &lt;chr&gt;, Q017 &lt;chr&gt;, Q018 &lt;chr&gt;,
+## #   Q019 &lt;chr&gt;, Q020 &lt;chr&gt;, Q021 &lt;chr&gt;, Q022 &lt;chr&gt;, Q023 &lt;chr&gt;, Q024 &lt;chr&gt;, …
+## 
+## [[5]]
+## # A tibble: 500 × 36
+##    TP_SEXO NO_MUNICIPIO_ESC         SG_UF_ESC NO_MUNICIPIO_PROVA     SG_UF_PROVA
+##    &lt;chr&gt;   &lt;chr&gt;                    &lt;chr&gt;     &lt;chr&gt;                  &lt;chr&gt;      
+##  1 F        &lt;NA&gt;                    &lt;NA&gt;      &quot;Bel\xe9m&quot;             PA         
+##  2 M        &lt;NA&gt;                    &lt;NA&gt;      &quot;Natal&quot;                RN         
+##  3 M       &quot;Santana de Parna\xedba&quot; SP        &quot;Santana de Parna\xed… SP         
+##  4 M        &lt;NA&gt;                    &lt;NA&gt;      &quot;Recife&quot;               PE         
+##  5 M        &lt;NA&gt;                    &lt;NA&gt;      &quot;S\xe3o Paulo&quot;         SP         
+##  6 F        &lt;NA&gt;                    &lt;NA&gt;      &quot;Santo Andr\xe9&quot;       SP         
+##  7 F        &lt;NA&gt;                    &lt;NA&gt;      &quot;Aracaju&quot;              SE         
+##  8 M        &lt;NA&gt;                    &lt;NA&gt;      &quot;Curitiba&quot;             PR         
+##  9 F       &quot;Feira de Santana&quot;       BA        &quot;Feira de Santana&quot;     BA         
+## 10 F        &lt;NA&gt;                    &lt;NA&gt;      &quot;Uberl\xe2ndia&quot;        MG         
+## # … with 490 more rows, and 31 more variables: TX_RESPOSTAS_CN &lt;chr&gt;,
+## #   TX_RESPOSTAS_CH &lt;chr&gt;, TX_RESPOSTAS_LC &lt;chr&gt;, TX_RESPOSTAS_MT &lt;chr&gt;,
+## #   TX_GABARITO_CN &lt;chr&gt;, TX_GABARITO_CH &lt;chr&gt;, TX_GABARITO_LC &lt;chr&gt;,
+## #   TX_GABARITO_MT &lt;chr&gt;, Q001 &lt;chr&gt;, Q002 &lt;chr&gt;, Q003 &lt;chr&gt;, Q004 &lt;chr&gt;,
+## #   Q006 &lt;chr&gt;, Q008 &lt;chr&gt;, Q009 &lt;chr&gt;, Q010 &lt;chr&gt;, Q011 &lt;chr&gt;, Q012 &lt;chr&gt;,
+## #   Q013 &lt;chr&gt;, Q014 &lt;chr&gt;, Q015 &lt;chr&gt;, Q016 &lt;chr&gt;, Q017 &lt;chr&gt;, Q018 &lt;chr&gt;,
+## #   Q019 &lt;chr&gt;, Q020 &lt;chr&gt;, Q021 &lt;chr&gt;, Q022 &lt;chr&gt;, Q023 &lt;chr&gt;, Q024 &lt;chr&gt;, …</code></pre>
+<pre class="r"><code>chisq &lt;- function(dados){
+  resultado &lt;- tibble(
+  colu1= character(),
+  colu2= character(),
+  x2 = numeric(),
+  p_value= numeric()
+   )
+  
+   for (col1 in colnames(dados)) {
+    for(col2 in colnames(dados)){
+      if (col1 == col2 ) {
+        next
+      }
+      
+      #print(paste(col1, col2))
+      chisq &lt;- chisq.test(unlist(dados[,col1]), unlist(dados[,col2]), simulate.p.value = TRUE)
+      p &lt;-  chisq$p.value
+      xsq &lt;- chisq$statistic
+      
+      resultado &lt;- add_row(resultado, colu1=col1, colu2=col2, x2= xsq, p_value=p)
+      
+      }
+      }
+  resultado&lt;- resultado[!duplicated(apply(resultado,1,function(x) paste(sort(x),collapse=&#39;&#39;))),]
+  resultado &lt;- resultado %&gt;% arrange(p_value)
+  resultado
+}
+
+rlt_chisq_1 &lt;- chisq(enem.df_list[[2]])
+rlt_chisq_1</code></pre>
+<pre><code>## # A tibble: 956 × 4
+##    colu1              colu2                   x2  p_value
+##    &lt;chr&gt;              &lt;chr&gt;                &lt;dbl&gt;    &lt;dbl&gt;
+##  1 NO_MUNICIPIO_ESC   SG_UF_ESC           2420   0.000500
+##  2 NO_MUNICIPIO_ESC   NO_MUNICIPIO_PROVA  9350   0.000500
+##  3 NO_MUNICIPIO_ESC   SG_UF_PROVA         2420   0.000500
+##  4 NO_MUNICIPIO_ESC   TX_RESPOSTAS_CH     6992   0.000500
+##  5 NO_MUNICIPIO_ESC   TX_RESPOSTAS_LC     6992   0.000500
+##  6 SG_UF_ESC          NO_MUNICIPIO_PROVA  2420   0.000500
+##  7 SG_UF_ESC          SG_UF_PROVA         2420   0.000500
+##  8 SG_UF_ESC          Q016                  41.3 0.000500
+##  9 NO_MUNICIPIO_PROVA SG_UF_PROVA        13000   0.000500
+## 10 NO_MUNICIPIO_PROVA Q016                 328.  0.000500
+## # … with 946 more rows</code></pre>
+<pre class="r"><code>#rlt_chisq_2
+#rlt_chisq_3
+#rlt_chisq_4
+#rlt_chisq_5</code></pre>
+<p>[] TODO <strong>Realizar o teste para cada subconjunto de dados e
+dividir por categoria </strong></p>
+<p>// os atributos de TX_GABARITO_* se repetem, pois eh uma taxa de
+gabarito pra cada tipo de prova, por volta de 14 tipos de provas, ao
+inves de ter um vetor enorme talvez substituir por um codigo ou
+categoria</p>
+</div>
+</div>
+<div id="normalização" class="section level2">
+<h2>Normalização</h2>
+<p>A normalização será realizada nos atributos NU_NOTA_CH e NU_NOTA_MT
+que representam, respectivamente, a nota da prova de ciências humanas e
+a nota de redação. O conjunto de dados possui diversos atributos sem
+significado semantico(n sei se eh essa a palavra), que apresentam um
+significado específico, como código de provas e código de municipio.</p>
+<div id="aplicação-no-atributos-nu_nota_ch-e-nu_nota_mt" class="section level3">
+<h3>Aplicação no atributos NU_NOTA_CH e NU_NOTA_MT</h3>
+<p>No bloco abaixo, as funções z score e min-max são aplicadas nos
+atributos escolhidos e os resultados são adicionados a um novo conjunto,
+chamado <em>enem.df_numeric_norm</em>, derivado do conjunto
+original.</p>
+<pre class="r"><code>head(enem.df_numeric,50)</code></pre>
+<pre><code>##    NU_INSCRICAO TP_FAIXA_ETARIA TP_ESTADO_CIVIL TP_COR_RACA TP_NACIONALIDADE
+## 1  200006271946              11               1           2                1
+## 2  200001195856              11               2           3                1
+## 3  200001943954               4               2           3                2
+## 4  200001908998               2               1           3                1
+## 5  200001634757               4               1           3                2
+## 6  200003132410               3               1           3                1
+## 7  200001379770               9               1           3                1
+## 8  200001334237               4               1           1                1
+## 9  200006762554               5               2           3                1
+## 10 200005146210               2               1           2                1
+## 11 200004902048               6               1           1                1
+## 12 200006138472               7               1           1                1
+## 13 200005613689               3               1           3                1
+## 14 200004833505              11               2           2                1
+## 15 200004570764              11               1           2                1
+## 16 200001071590               5               1           3                1
+## 17 200001934470               7               1           3                1
+## 18 200006066678               4               1           1                1
+## 19 200003343448               7               1           3                1
+## 20 200005966328              13               1           2                1
+## 21 200002523760              10               1           3                1
+## 22 200006589374               5               1           1                1
+## 23 200006659163               6               1           3                1
+## 24 200002797471               6               1           3                1
+## 25 200005044037               5               2           2                1
+## 26 200001994876              10               1           2                2
+## 27 200006735848              10               1           2                1
+## 28 200001346535              12               1           3                1
+## 29 200002713413              11               1           3                1
+## 30 200003251511               6               1           1                1
+## 31 200003315528               7               1           2                1
+## 32 200001086897              11               1           2                1
+## 33 200002349384               7               1           2                1
+## 34 200001699039              12               1           2                1
+## 35 200002154624               7               0           3                1
+## 36 200005550767               2               1           1                1
+## 37 200003209996               3               1           3                1
+## 38 200003154344               5               1           3                1
+## 39 200005914772               4               1           3                1
+## 40 200006314268              13               2           3                1
+## 41 200002794061               6               1           3                1
+## 42 200005867610               2               0           0                1
+## 43 200006187506              11               1           1                1
+## 44 200005105757               3               1           3                1
+## 45 200004415977              11               1           3                1
+## 46 200006140756              12               0           3                1
+## 47 200006066398               4               1           3                1
+## 48 200005885744               6               1           3                1
+## 49 200003852394              11               1           3                1
+## 50 200003367310               3               1           1                1
+##    TP_ST_CONCLUSAO TP_ANO_CONCLUIU TP_ESCOLA TP_ENSINO IN_TREINEIRO
+## 1                1              11         1        NA            0
+## 2                1              11         1        NA            0
+## 3                2               0         2         1            0
+## 4                2               0         2         1            0
+## 5                1               1         1        NA            0
+## 6                1               1         1        NA            0
+## 7                1               6         1        NA            0
+## 8                1               1         1        NA            0
+## 9                1               3         1        NA            0
+## 10               2               0         2         1            0
+## 11               1               3         1        NA            0
+## 12               1               0         1        NA            0
+## 13               1               1         1        NA            0
+## 14               1              12         1        NA            0
+## 15               1               0         1        NA            0
+## 16               1               0         1        NA            0
+## 17               1               4         1        NA            0
+## 18               1               1         1        NA            0
+## 19               1               3         1        NA            0
+## 20               1               0         1        NA            0
+## 21               1               8         1        NA            0
+## 22               1               1         1        NA            0
+## 23               1               3         1        NA            0
+## 24               1               4         1        NA            0
+## 25               1               2         1        NA            0
+## 26               2               0         2         1            0
+## 27               1               9         1        NA            0
+## 28               1              14         1        NA            0
+## 29               1              11         1        NA            0
+## 30               1               4         1        NA            0
+## 31               1               0         1        NA            0
+## 32               1               6         1        NA            0
+## 33               1               4         1        NA            0
+## 34               1              12         1        NA            0
+## 35               1               5         1        NA            0
+## 36               3               0         1        NA            1
+## 37               2               0         2         1            0
+## 38               1               3         1        NA            0
+## 39               1               2         1        NA            0
+## 40               1               0         1        NA            0
+## 41               1               0         1        NA            0
+## 42               3               0         1        NA            1
+## 43               1               0         1        NA            0
+## 44               1               1         1        NA            0
+## 45               1               0         1        NA            0
+## 46               4               0         1        NA            0
+## 47               1               1         1        NA            0
+## 48               1               5         1        NA            0
+## 49               1               9         1        NA            0
+## 50               1               1         1        NA            0
+##    CO_MUNICIPIO_ESC CO_UF_ESC TP_DEPENDENCIA_ADM_ESC TP_LOCALIZACAO_ESC
+## 1                NA        NA                     NA                 NA
+## 2                NA        NA                     NA                 NA
+## 3           2927408        29                      2                  1
+## 4           3547304        35                      3                  1
+## 5                NA        NA                     NA                 NA
+## 6                NA        NA                     NA                 NA
+## 7                NA        NA                     NA                 NA
+## 8                NA        NA                     NA                 NA
+## 9                NA        NA                     NA                 NA
+## 10               NA        NA                     NA                 NA
+## 11               NA        NA                     NA                 NA
+## 12               NA        NA                     NA                 NA
+## 13               NA        NA                     NA                 NA
+## 14               NA        NA                     NA                 NA
+## 15               NA        NA                     NA                 NA
+## 16               NA        NA                     NA                 NA
+## 17               NA        NA                     NA                 NA
+## 18               NA        NA                     NA                 NA
+## 19               NA        NA                     NA                 NA
+## 20               NA        NA                     NA                 NA
+## 21               NA        NA                     NA                 NA
+## 22               NA        NA                     NA                 NA
+## 23               NA        NA                     NA                 NA
+## 24               NA        NA                     NA                 NA
+## 25               NA        NA                     NA                 NA
+## 26          2910800        29                      2                  1
+## 27               NA        NA                     NA                 NA
+## 28               NA        NA                     NA                 NA
+## 29               NA        NA                     NA                 NA
+## 30               NA        NA                     NA                 NA
+## 31               NA        NA                     NA                 NA
+## 32               NA        NA                     NA                 NA
+## 33               NA        NA                     NA                 NA
+## 34               NA        NA                     NA                 NA
+## 35               NA        NA                     NA                 NA
+## 36               NA        NA                     NA                 NA
+## 37          1302009        13                      2                  1
+## 38               NA        NA                     NA                 NA
+## 39               NA        NA                     NA                 NA
+## 40               NA        NA                     NA                 NA
+## 41               NA        NA                     NA                 NA
+## 42               NA        NA                     NA                 NA
+## 43               NA        NA                     NA                 NA
+## 44               NA        NA                     NA                 NA
+## 45               NA        NA                     NA                 NA
+## 46               NA        NA                     NA                 NA
+## 47               NA        NA                     NA                 NA
+## 48               NA        NA                     NA                 NA
+## 49               NA        NA                     NA                 NA
+## 50               NA        NA                     NA                 NA
+##    TP_SIT_FUNC_ESC CO_MUNICIPIO_PROVA CO_UF_PROVA TP_PRESENCA_CN TP_PRESENCA_CH
+## 1               NA            1501402          15              0              0
+## 2               NA            2408102          24              1              1
+## 3                1            2927408          29              0              0
+## 4                1            3547304          35              1              1
+## 5               NA            3121605          31              0              0
+## 6               NA            4305207          43              1              1
+## 7               NA            2611606          26              0              0
+## 8               NA            3550308          35              1              1
+## 9               NA            2507507          25              1              1
+## 10              NA            2304400          23              0              0
+## 11              NA            3550308          35              0              0
+## 12              NA            2910727          29              1              1
+## 13              NA            5008305          50              0              0
+## 14              NA            3547809          35              0              0
+## 15              NA            2604007          26              0              0
+## 16              NA            2800308          28              0              0
+## 17              NA            2933307          29              0              0
+## 18              NA            4106902          41              0              0
+## 19              NA            2704302          27              1              1
+## 20              NA            1501402          15              1              1
+## 21              NA            1300706          13              0              0
+## 22              NA            3518800          35              0              0
+## 23              NA            1706100          17              1              1
+## 24              NA            2305506          23              0              1
+## 25              NA            3507605          35              1              1
+## 26               1            2910800          29              0              0
+## 27              NA            2927408          29              1              1
+## 28              NA            2927408          29              1              1
+## 29              NA            4106902          41              0              0
+## 30              NA            2308708          23              1              1
+## 31              NA            3170206          31              0              0
+## 32              NA            2927408          29              0              1
+## 33              NA            2927408          29              0              1
+## 34              NA            3301009          33              0              0
+## 35              NA            2611101          26              0              0
+## 36              NA            3550308          35              0              0
+## 37               1            1304005          13              1              1
+## 38              NA            3530607          35              1              1
+## 39              NA            2504009          25              0              0
+## 40              NA            3509502          35              1              1
+## 41              NA            2800308          28              1              1
+## 42              NA            2805703          28              1              1
+## 43              NA            3507506          35              0              0
+## 44              NA            3157807          31              1              1
+## 45              NA            3515004          35              1              1
+## 46              NA            3106200          31              0              0
+## 47              NA            4314902          43              1              1
+## 48              NA            2933307          29              1              1
+## 49              NA            3152105          31              0              0
+## 50              NA            2304400          23              1              1
+##    TP_PRESENCA_LC TP_PRESENCA_MT CO_PROVA_CN CO_PROVA_CH CO_PROVA_LC
+## 1               0              0          NA          NA          NA
+## 2               1              1         702         689         693
+## 3               0              0          NA          NA          NA
+## 4               1              1         700         688         692
+## 5               0              0          NA          NA          NA
+## 6               1              1         598         567         577
+## 7               0              0          NA          NA          NA
+## 8               1              1         699         687         691
+## 9               1              1         598         567         577
+## 10              0              0          NA          NA          NA
+## 11              0              0          NA          NA          NA
+## 12              1              1         598         567         577
+## 13              0              0          NA          NA          NA
+## 14              0              0          NA          NA          NA
+## 15              0              0          NA          NA          NA
+## 16              0              0          NA          NA          NA
+## 17              0              0          NA          NA          NA
+## 18              0              0          NA          NA          NA
+## 19              1              1         597         569         580
+## 20              1              1         600         570         579
+## 21              0              0          NA          NA          NA
+## 22              0              0          NA          NA          NA
+## 23              1              1         600         570         579
+## 24              1              0          NA         569         580
+## 25              1              1         600         570         579
+## 26              0              0          NA          NA          NA
+## 27              1              1         599         568         578
+## 28              1              1         600         570         579
+## 29              0              0          NA          NA          NA
+## 30              1              1         598         567         577
+## 31              0              0          NA          NA          NA
+## 32              1              0          NA         570         579
+## 33              1              0          NA         687         691
+## 34              0              0          NA          NA          NA
+## 35              0              0          NA          NA          NA
+## 36              0              0          NA          NA          NA
+## 37              1              1         677         649         660
+## 38              1              1         600         570         579
+## 39              0              0          NA          NA          NA
+## 40              1              1         598         567         577
+## 41              1              1         701         690         694
+## 42              1              1         600         570         579
+## 43              0              0          NA          NA          NA
+## 44              1              1         600         570         579
+## 45              1              1         600         570         579
+## 46              0              0          NA          NA          NA
+## 47              1              1         597         569         580
+## 48              1              1         599         568         578
+## 49              0              0          NA          NA          NA
+## 50              1              1         599         568         578
+##    CO_PROVA_MT NU_NOTA_CN NU_NOTA_CH NU_NOTA_LC NU_NOTA_MT TP_LINGUA
+## 1           NA         NA         NA         NA         NA         1
+## 2          698      604.1      661.7      595.3      711.3         1
+## 3           NA         NA         NA         NA         NA         0
+## 4          696      620.8      675.0      624.2      759.4         0
+## 5           NA         NA         NA         NA         NA         1
+## 6          588      498.1      604.7      505.4      526.7         1
+## 7           NA         NA         NA         NA         NA         0
+## 8          695      604.6      604.8      562.1      753.2         0
+## 9          588      439.7      383.5      486.2      448.5         1
+## 10          NA         NA         NA         NA         NA         0
+## 11          NA         NA         NA         NA         NA         0
+## 12         588      491.1      631.4      627.9      546.5         0
+## 13          NA         NA         NA         NA         NA         0
+## 14          NA         NA         NA         NA         NA         1
+## 15          NA         NA         NA         NA         NA         1
+## 16          NA         NA         NA         NA         NA         1
+## 17          NA         NA         NA         NA         NA         1
+## 18          NA         NA         NA         NA         NA         0
+## 19         587      422.4      488.1      559.1      420.3         0
+## 20         589      486.0      503.3      439.8      405.6         1
+## 21          NA         NA         NA         NA         NA         1
+## 22          NA         NA         NA         NA         NA         0
+## 23         589      660.6      667.2      593.6      746.4         1
+## 24          NA         NA      398.3      336.5         NA         1
+## 25         589      488.0      588.9      525.9      542.8         0
+## 26          NA         NA         NA         NA         NA         0
+## 27         590      394.4      436.2      508.3      561.6         1
+## 28         589      545.6      591.2      543.0      596.5         1
+## 29          NA         NA         NA         NA         NA         1
+## 30         588      535.8      598.0      546.1      664.9         1
+## 31          NA         NA         NA         NA         NA         1
+## 32          NA         NA      475.1      553.4         NA         0
+## 33          NA         NA      463.7      477.9         NA         0
+## 34          NA         NA         NA         NA         NA         1
+## 35          NA         NA         NA         NA         NA         0
+## 36          NA         NA         NA         NA         NA         0
+## 37         667      486.9      509.7      532.3      433.9         1
+## 38         589      378.1      537.4      549.2      441.8         0
+## 39          NA         NA         NA         NA         NA         1
+## 40         588      459.3      500.2      579.7      492.0         1
+## 41         697      514.8      482.4      565.0      496.7         0
+## 42         589      503.4      448.4      432.7      397.0         0
+## 43          NA         NA         NA         NA         NA         0
+## 44         589      519.5      554.1      586.4      582.1         1
+## 45         589      526.8      545.2      572.7      533.9         0
+## 46          NA         NA         NA         NA         NA         0
+## 47         587      469.9      497.0      541.7      461.1         1
+## 48         590      641.3      684.5      626.6      724.2         0
+## 49          NA         NA         NA         NA         NA         0
+## 50         590      379.8      434.8      512.9      455.2         0
+##    TP_STATUS_REDACAO NU_NOTA_COMP1 NU_NOTA_COMP2 NU_NOTA_COMP3 NU_NOTA_COMP4
+## 1                 NA            NA            NA            NA            NA
+## 2                  1           120           120           120           120
+## 3                 NA            NA            NA            NA            NA
+## 4                  1           140           200           140           120
+## 5                 NA            NA            NA            NA            NA
+## 6                  1           140           120           140           140
+## 7                 NA            NA            NA            NA            NA
+## 8                  1           140           120           120           120
+## 9                  1           120           120           120           140
+## 10                NA            NA            NA            NA            NA
+## 11                NA            NA            NA            NA            NA
+## 12                 1           140           120           140           120
+## 13                NA            NA            NA            NA            NA
+## 14                NA            NA            NA            NA            NA
+## 15                NA            NA            NA            NA            NA
+## 16                NA            NA            NA            NA            NA
+## 17                NA            NA            NA            NA            NA
+## 18                NA            NA            NA            NA            NA
+## 19                 1           140           180           140           160
+## 20                 1           100           100           120           100
+## 21                NA            NA            NA            NA            NA
+## 22                NA            NA            NA            NA            NA
+## 23                 1           160           200           180           200
+## 24                 1           100           120           120           100
+## 25                 1           120           160           120           140
+## 26                NA            NA            NA            NA            NA
+## 27                 1           120            80            60           120
+## 28                 1           100           120           120           120
+## 29                NA            NA            NA            NA            NA
+## 30                 1           160           120           160           180
+## 31                NA            NA            NA            NA            NA
+## 32                 1           120           120           100           100
+## 33                 1           140           120           120           160
+## 34                NA            NA            NA            NA            NA
+## 35                NA            NA            NA            NA            NA
+## 36                NA            NA            NA            NA            NA
+## 37                 1           120           120           120           140
+## 38                 1           120           120           120           120
+## 39                NA            NA            NA            NA            NA
+## 40                 7             0             0             0             0
+## 41                 1           120           200           120           120
+## 42                 1           100           120           120           100
+## 43                NA            NA            NA            NA            NA
+## 44                 1           100           120           120           100
+## 45                 1           120           120           120           120
+## 46                NA            NA            NA            NA            NA
+## 47                 1           120           120           100           100
+## 48                 1           160           200           200           200
+## 49                NA            NA            NA            NA            NA
+## 50                 1            80           120            80           120
+##    NU_NOTA_COMP5 NU_NOTA_REDACAO Q005
+## 1             NA              NA   NA
+## 2            100             580   NA
+## 3             NA              NA    3
+## 4            160             760   NA
+## 5             NA              NA    3
+## 6            160             700    5
+## 7             NA              NA   NA
+## 8            100             600   NA
+## 9            100             600    2
+## 10            NA              NA    4
+## 11            NA              NA    7
+## 12           120             640    5
+## 13            NA              NA    3
+## 14            NA              NA   NA
+## 15            NA              NA    3
+## 16            NA              NA   NA
+## 17            NA              NA    3
+## 18            NA              NA   NA
+## 19           180             800    2
+## 20            80             500    5
+## 21            NA              NA    5
+## 22            NA              NA    5
+## 23           180             920    2
+## 24            80             520    3
+## 25           160             700    2
+## 26            NA              NA   NA
+## 27           140             520    5
+## 28           120             580    3
+## 29            NA              NA    1
+## 30           120             740    3
+## 31            NA              NA   NA
+## 32            80             520    3
+## 33           160             700   NA
+## 34            NA              NA    1
+## 35            NA              NA   NA
+## 36            NA              NA    3
+## 37           120             620    4
+## 38           120             600    4
+## 39            NA              NA    5
+## 40             0               0    4
+## 41           160             720   NA
+## 42            60             500    3
+## 43            NA              NA    2
+## 44           100             540    4
+## 45           140             620    1
+## 46            NA              NA    2
+## 47           100             540    6
+## 48           200             960    4
+## 49            NA              NA    2
+## 50           200             600    3</code></pre>
+<pre class="r"><code>options(scipen = 999) 
+
+z_score_norm &lt;- function(x) {
+  (x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
+}
+min_max_norm &lt;- function(x, min = 0, max = 1) {
+  num &lt;- (x - min(x, na.rm = TRUE))*(max - min)
+  denom &lt;- max(x, na.rm = TRUE) - min(x, na.rm = TRUE)
+
+  min + num / denom
+} 
+
+NU_NOTA_CH_normz &lt;- z_score_norm(enem.df$NU_NOTA_CH)
+NU_NOTA_CH_norm01 &lt;- min_max_norm(enem.df$NU_NOTA_CH)
+NU_NOTA_MT_normz &lt;-  z_score_norm(enem.df$NU_NOTA_MT)
+NU_NOTA_MT_norm01 &lt;- min_max_norm(enem.df$NU_NOTA_MT)
+
+# Colocar no numerico pq vai precisar rodar o r e R² 
+enem.df_numeric_norm &lt;- enem.df_numeric %&gt;% select(-NU_NOTA_CH, -NU_NOTA_MT) %&gt;% mutate(NU_NOTA_CH_normz, NU_NOTA_CH_norm01, NU_NOTA_MT_normz, NU_NOTA_MT_norm01)
+
+head(enem.df_numeric_norm)</code></pre>
+<pre><code>##   NU_INSCRICAO TP_FAIXA_ETARIA TP_ESTADO_CIVIL TP_COR_RACA TP_NACIONALIDADE
+## 1 200006271946              11               1           2                1
+## 2 200001195856              11               2           3                1
+## 3 200001943954               4               2           3                2
+## 4 200001908998               2               1           3                1
+## 5 200001634757               4               1           3                2
+## 6 200003132410               3               1           3                1
+##   TP_ST_CONCLUSAO TP_ANO_CONCLUIU TP_ESCOLA TP_ENSINO IN_TREINEIRO
+## 1               1              11         1        NA            0
+## 2               1              11         1        NA            0
+## 3               2               0         2         1            0
+## 4               2               0         2         1            0
+## 5               1               1         1        NA            0
+## 6               1               1         1        NA            0
+##   CO_MUNICIPIO_ESC CO_UF_ESC TP_DEPENDENCIA_ADM_ESC TP_LOCALIZACAO_ESC
+## 1               NA        NA                     NA                 NA
+## 2               NA        NA                     NA                 NA
+## 3          2927408        29                      2                  1
+## 4          3547304        35                      3                  1
+## 5               NA        NA                     NA                 NA
+## 6               NA        NA                     NA                 NA
+##   TP_SIT_FUNC_ESC CO_MUNICIPIO_PROVA CO_UF_PROVA TP_PRESENCA_CN TP_PRESENCA_CH
+## 1              NA            1501402          15              0              0
+## 2              NA            2408102          24              1              1
+## 3               1            2927408          29              0              0
+## 4               1            3547304          35              1              1
+## 5              NA            3121605          31              0              0
+## 6              NA            4305207          43              1              1
+##   TP_PRESENCA_LC TP_PRESENCA_MT CO_PROVA_CN CO_PROVA_CH CO_PROVA_LC CO_PROVA_MT
+## 1              0              0          NA          NA          NA          NA
+## 2              1              1         702         689         693         698
+## 3              0              0          NA          NA          NA          NA
+## 4              1              1         700         688         692         696
+## 5              0              0          NA          NA          NA          NA
+## 6              1              1         598         567         577         588
+##   NU_NOTA_CN NU_NOTA_LC TP_LINGUA TP_STATUS_REDACAO NU_NOTA_COMP1 NU_NOTA_COMP2
+## 1         NA         NA         1                NA            NA            NA
+## 2      604.1      595.3         1                 1           120           120
+## 3         NA         NA         0                NA            NA            NA
+## 4      620.8      624.2         0                 1           140           200
+## 5         NA         NA         1                NA            NA            NA
+## 6      498.1      505.4         1                 1           140           120
+##   NU_NOTA_COMP3 NU_NOTA_COMP4 NU_NOTA_COMP5 NU_NOTA_REDACAO Q005
+## 1            NA            NA            NA              NA   NA
+## 2           120           120           100             580   NA
+## 3            NA            NA            NA              NA    3
+## 4           140           120           160             760   NA
+## 5            NA            NA            NA              NA    3
+## 6           140           140           160             700    5
+##   NU_NOTA_CH_normz NU_NOTA_CH_norm01 NU_NOTA_MT_normz NU_NOTA_MT_norm01
+## 1               NA                NA               NA                NA
+## 2        1.4697666         0.7670995      1.544394139         0.7295385
+## 3               NA                NA               NA                NA
+## 4        1.6074960         0.7825180      1.945490643         0.7788718
+## 5               NA                NA               NA                NA
+## 6        0.8794975         0.7010202      0.005050799         0.5402051</code></pre>
+<p>A seguir são realizado teste para analisar os efeitos da normalização
+perante os atributos redundantes.</p>
+<pre class="r"><code># Teste com atributos numéricos realizado no conjunto com os atributos normalizados
+
+cor_fun&lt;- function(x,y){
+  val &lt;- tryCatch(cor(x, y,use=&quot;complete.obs&quot;), error = function(e) e, warning = function(w) w)
+  if (any(class(val) %in% c(&quot;simpleWarning&quot;, &quot;warning&quot;))) {
+    return(mean(x))
+  } else {
+    return(val)
+  }
+}
+
+calculo_redundante_norm &lt;- function(dados){
+  resultado &lt;- tibble(
+  colu1= character(),
+  colu2= character(),
+  r= numeric(),
+  R2=numeric()
+  )
+
+  for(col1 in c(&quot;NU_NOTA_CH_normz&quot;, &quot;NU_NOTA_CH_norm01&quot;, &quot;NU_NOTA_MT_normz&quot;, &quot;NU_NOTA_MT_norm01&quot;)){     
+    for(col2 in colnames(dados)){
+      if (col1 == col2) {
+        next
+      }
+      li_med &lt;- medidas(dados[,col1], dados[,col2])
+      
+      if(!is.na(li_med$correlacao) &amp; !is.na(li_med$determinacao)){
+        resultado &lt;- add_row(resultado, colu1=col1, colu2=col2, r=li_med$correlacao,R2=li_med$determinacao)
+        }
+      }
+  }
+  resultado&lt;- resultado[!duplicated(apply(resultado,1,function(x) paste(sort(x),collapse=&#39;&#39;))),]
+   resultado &lt;- resultado %&gt;% arrange(desc(r), desc(R2))
+  return(resultado)
+  }
+
+
+rlt_redun_norms &lt;- calculo_redundante_norm(enem.df_numeric_norm)
+rlt_redun_norms</code></pre>
+<pre><code>## # A tibble: 142 × 4
+##    colu1             colu2                 r    R2
+##    &lt;chr&gt;             &lt;chr&gt;             &lt;dbl&gt; &lt;dbl&gt;
+##  1 NU_NOTA_CH_normz  NU_NOTA_CH_norm01 1     1    
+##  2 NU_NOTA_MT_normz  NU_NOTA_MT_norm01 1     1    
+##  3 NU_NOTA_CH_norm01 NU_NOTA_LC        0.741 0.549
+##  4 NU_NOTA_CH_normz  NU_NOTA_LC        0.741 0.549
+##  5 NU_NOTA_CH_norm01 NU_NOTA_CN        0.717 0.514
+##  6 NU_NOTA_CH_normz  NU_NOTA_CN        0.717 0.514
+##  7 NU_NOTA_MT_normz  NU_NOTA_CN        0.715 0.511
+##  8 NU_NOTA_MT_norm01 NU_NOTA_CN        0.715 0.511
+##  9 NU_NOTA_CH_normz  NU_NOTA_MT_normz  0.685 0.469
+## 10 NU_NOTA_CH_normz  NU_NOTA_MT_norm01 0.685 0.469
+## # … with 132 more rows</code></pre>
+<pre class="r"><code># Teste com atributos numéricos realizado no conjunto com os atributos originais, apenas observando o comportamento em comparação aos atributos escolhidos
+
+calculo_redundante_notas &lt;- function(dados){
+  resultado &lt;- tibble(
+  colu1= character(),
+  colu2= character(),
+  r= numeric(),
+  R2=numeric()
+)
+
+  for(col1 in c(&quot;NU_NOTA_CH&quot;, &quot;NU_NOTA_MT&quot;)){     
+    for(col2 in colnames(dados)){
+      if (col1 == col2) {
+        next
+      }
+     
+      li_med &lt;- medidas(dados[,col1], dados[,col2])
+      
+      if(!is.na(li_med$correlacao) &amp; !is.na(li_med$determinacao)){
+        resultado &lt;- add_row(resultado, colu1=col1, colu2=col2, r=li_med$correlacao,R2=li_med$determinacao)
+        }
+      }
+  }
+  resultado&lt;- resultado[!duplicated(apply(resultado,1,function(x) paste(sort(x),collapse=&#39;&#39;))),]
+   resultado &lt;- resultado %&gt;% arrange(desc(r), desc(R2))
+  return(resultado)
+}
+
+rlt_redun_original &lt;- calculo_redundante_notas(enem.df_numeric)
+rlt_redun_original</code></pre>
+<pre><code>## # A tibble: 69 × 4
+##    colu1      colu2               r    R2
+##    &lt;chr&gt;      &lt;chr&gt;           &lt;dbl&gt; &lt;dbl&gt;
+##  1 NU_NOTA_CH NU_NOTA_LC      0.741 0.549
+##  2 NU_NOTA_CH NU_NOTA_CN      0.717 0.514
+##  3 NU_NOTA_MT NU_NOTA_CN      0.715 0.511
+##  4 NU_NOTA_CH NU_NOTA_MT      0.685 0.469
+##  5 NU_NOTA_MT NU_NOTA_LC      0.637 0.405
+##  6 NU_NOTA_CH NU_NOTA_REDACAO 0.531 0.281
+##  7 NU_NOTA_MT NU_NOTA_REDACAO 0.514 0.264
+##  8 NU_NOTA_CH NU_NOTA_COMP4   0.492 0.242
+##  9 NU_NOTA_CH NU_NOTA_COMP1   0.491 0.241
+## 10 NU_NOTA_MT NU_NOTA_COMP4   0.486 0.236
+## # … with 59 more rows</code></pre>
+<p>[ ] TODO: analisar e comparar as tabelas produzidas, rlt_norms e
+rlt_df_original se os coeficientes estão parecidos [ ] TODO: teste para
+atributos categoricos</p>
+</div>
 </div>
 </div>
 
