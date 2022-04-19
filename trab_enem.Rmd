@@ -23,10 +23,16 @@ Os dados foram obtidos através da plataforma oficial do Governo Federal e podem
 ```{r}
 library(tidyverse)
 library(data.table)
+library(rcompanion)
+library(lsr)
+library(vcd)
+library(outliers)
+library(EnvStats)
+library(DescTools)
 ```
 # Importação
 
-Considerando que o dataset completo possui cerca de 2GB de dados, foram carregadas apenas as 2.000.000 primeiras linhas, já que o dataset inteiro pode não caber em memória em diversas máquinas.
+Considerando que o dataset completo possui cerca de 2GB de dados, foram carregadas apenas as 1.000.000 primeiras linhas, já que o dataset inteiro pode não caber em memória em diversas máquinas.
 
 ```{r}
 file <- 'enem/DADOS/MICRODADOS_ENEM_2020.csv'
@@ -37,7 +43,7 @@ enem.df <- fread(input=file,
            na.strings = "",
            nrows=1000000)
 
-enem.df
+head(enem.df)
 ```
 
 # Pré-Processamento
@@ -112,69 +118,67 @@ resultado
 
 ```
 
-Através do resultado, é possível observar que os atributos TP_PRESENCA_CH e TP_PRESENCA_LC, TP_PRESENCA_MT e TP_PRESENCA_CN possuem r e R² iguais a um. Isso significa que todos os valores são exatamente iguais. Essa situação faz sentido pois as provas de linguagens e códigos e ciências humanas, e ciências da natureza e matemática são realizadas no mesmo dia.
+Através do resultado, é possível observar que os atributos TP_PRESENCA_CH e TP_PRESENCA_LC, TP_PRESENCA_MT e TP_PRESENCA_CN possuem r e R² iguais a um. Isso significa que todos os valores são exatamente iguais. Essa situação faz sentido pois as provas de linguagens e códigos e ciências humanas, e ciências da natureza e matemática são realizadas no mesmo dia, assim como as outras presenças, pois é bem provavél que se a pessoa foi para o primeiro dia de prova ela também vai para o segundo dia de prova, senão a prova é anulada.
 
 Além disso, os atributos CO_MUNICIPIO_PROVA e CO_UF_PROVA possuem um valor bem próximo de 1, sendo 0.99 para o r e 0.99 para o R². Isso se deve ao fato de que o código do município sempre contém o código da UF em que a prova foi realizada.
 
-Portanto, para esses atributos a decisão é remover um de cada par pois seus valores são exatamente iguais ou bastante próximos.
-
-[ ] TODO: DROPAR OS ATRIBUTOS CITADOS e ANO
-//Pode-se observar que o é útil para identificar padrões nos dados (e.g., como os dados de um atributo “segue” os dados de
-outro atributo), enquanto o é interessante para mensurar a compatibilidade entre os valores.
-
-### Atributos categoricos
-
 ```{r}
-enem.df_list <- enem.df %>%
-  select(where(is.character)) %>%
-  group_by(Q007) %>%
-  slice_head(n=500) %>%
-  group_split(.keep=FALSE) 
-
-head(enem.df_list)
+head(enem.df$CO_MUNICIPIO_PROVA)
+head(enem.df$CO_UF_PROVA)
 
 ```
 
-
+### Atributos categoricos
+[ ]explicar rapidamente o coeficiente cramer
 ```{r}
+enem.df_character <- enem.df %>%
+  select(where(is.character), -NU_INSCRICAO, -TX_RESPOSTAS_CN, -TX_RESPOSTAS_CH, -TX_RESPOSTAS_LC, -TX_RESPOSTAS_MT) 
 
-chisq <- function(dados){
-  resultado <- tibble(
+
+cramers_v <- function(dados){
+  rslt <- tibble(
   colu1= character(),
   colu2= character(),
-  x2 = numeric(),
-  p_value= numeric()
+  cramer = numeric()
    )
   
    for (col1 in colnames(dados)) {
     for(col2 in colnames(dados)){
-      if (col1 == col2 ) {
-        next
-      }
-      
+      if (col1 != col2) {
+        
       #print(paste(col1, col2))
-      chisq <- chisq.test(unlist(dados[,col1]), unlist(dados[,col2]), simulate.p.value = TRUE)
-      p <-  chisq$p.value
-      xsq <- chisq$statistic
       
-      resultado <- add_row(resultado, colu1=col1, colu2=col2, x2= xsq, p_value=p)
-      
+      #c <- cv(unlist(dados[,..col1]), unlist(dados[,..col2]))
+      #c <- cv(unlist(dados[,col1]), unlist(dados[,col2]))
+      #print(c)
+      c <- CramerV(unlist(dados[,..col1]), unlist(dados[,..col2]), useNA="ifany")
+            if( c > 0.7){
+              rslt <- add_row(rslt, colu1=col1, colu2=col2, cramer=c)}
       }
       }
-  resultado<- resultado[!duplicated(apply(resultado,1,function(x) paste(sort(x),collapse=''))),]
-  resultado <- resultado %>% arrange(p_value)
-  resultado
+      }
+  rslt<- rslt[!duplicated(apply(rslt,1,function(x) paste(sort(x),collapse=''))),]
+  rslt <- rslt %>% arrange(desc(cramer))
+  rslt
 }
 
-rlt_chisq_1 <- chisq(enem.df_list[[2]])
-rlt_chisq_1
-
-
+rlt_cramer <-  cramers_v(enem.df_character)
+rlt_cramer
 ```
+Observa-se no resultado, que os atributos TX_GABARITO possuem o valor de coeficiente
+exatamente 1, isso se dá pois esse atributo é um vetor com as respostas de cada tipo prova e as provas de ciências da natureza e matemática são realizadas juntas, assim como as provas de linguagens e códigos e ciências humanas. 
 
-[] TODO **Realizar o teste para cada subconjunto de dados e dividir por categoria**
+### Conclusão
+Os coeficientes utilizados nos ajudaram a entender os relacionamentos e associações existentes nesse conjunto de dados, dessa forma encontramos atributos que são redundantes e podem ser removidos sem prejudicar o conjunto de dados. São esses atributos:
 
-// os atributos de TX_GABARITO_* se repetem, pois eh uma taxa de gabarito pra cada tipo de prova, por volta de 14 tipos de provas, ao inves de ter um vetor enorme talvez substituir por um codigo ou categoria
+* TP_PRESENCA_CH mesmo compatibilidade com TP_PRESENCA_MT, TP_PRESENCA_CN e TP_PRESENCA_LC
+* CO_MUNICIPIO_PROVA contém CO_UF_PROVA 
+* TX_GABARITO_CN	mesma compatibilidade com TX_GABARITO_MT	
+* TX_GABARITO_CH	mesma compatibiilidade com TX_GABARITO_LC	
+* NO_MUNICIPIO_PROVA	contém SG_UF_PROVA	
+* NO_MUNICIPIO_ESC contém	SG_UF_ESC
+
+[ ] TODO: DROPAR OS ATRIBUTOS CITADOS e ANO
 
 ## Normalização
 
@@ -213,14 +217,12 @@ enem.df_numeric_norm <- enem.df_numeric %>%
 
 
 head(enem.df_numeric_norm)
-summary(enem.df_numeric)
-summary(enem.df_numeric_norm)
 ```
 
 A seguir são realizado teste para analisar os efeitos da normalização com os 
 atributos redundantes.
 
-### Efeitos normalização 
+###Efeitos normalização 
 ```{r}
 
 # Teste de redundancia dos atributos numéricos normalizados no conjunto 
@@ -279,11 +281,11 @@ calculo_redundante_norm <- function(dados) {
   }
 
 rlt_redun_norms <- calculo_redundante_norm(enem.df_numeric_norm)
-rlt_redun_norms
+head(rlt_redun_norms)
 
 ```
 
-Com o df original
+Com os dados do original
 ```{r}
 # Teste com atributos numéricos realizado no conjunto com os atributos originais, apenas observando o comportamento em comparação aos atributos escolhidos
 
@@ -320,11 +322,12 @@ calculo_redundante_notas <- function(dados) {
 }
 
 rlt_redun_original <- calculo_redundante_notas(enem.df_numeric)
-rlt_redun_original
+head(rlt_redun_original)
 
 ```
 
-[ ] TODO: analisar e comparar as tabelas produzidas, rlt_redun_norms e rlt_redun_original se os coeficientes estão parecidos
+### Conclusão
+Concluí-se que o uso das normalizações manteve o mesmo significado dos coeficientes quando comparado ao uso dos dados originais
 
 ## Manipulação de dados faltantes
 
@@ -347,3 +350,36 @@ Apesar de incrivelmente alto, esse número condiz com os dados do INEP, que afir
 
 [ ] TODO Igor: completar inputação de dados faltantes 
 
+## Manipulação de dados ruídosos e outliers
+```{r}
+ruidos_outliers <- function(dados) {
+  resultado <- tibble(
+    atr = character(),
+    grubb = numeric(),
+    dixon = numeric(),
+    rosner = numeric()
+  )
+
+  for (col1 in colnames(dados)) {
+    print(col1)
+    g <- grubbs.test(unlist(dados[,col1]))$p.value
+    d <- 0
+    #d <- dixon.test(unlist(dados[,col1]))
+    r <- rosnerTest(unlist(dados[,col1]))$n.outliers
+    
+    resultado <- add_row(atr= col1, grubb= g, dixon= d, rosner= r)
+  }
+  
+  #resultado <- resultado %>% arrange(desc(r), desc(R2))
+  return(resultado)
+}
+
+rslt_ruidos_outliers <- ruidos_outliers(enem.df_numeric)
+rslt_ruidos_outliers
+
+```
+
+
+### Referências
+* https://rstudio-pubs-static.s3.amazonaws.com/558925_38b86f0530c9480fad4d029a4e4aea68.html#calculating-cramers-v-in-r
+* https://statsandr.com/blog/outliers-detection-in-r
