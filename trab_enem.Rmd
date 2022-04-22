@@ -29,10 +29,12 @@ library(vcd)
 library(outliers)
 library(EnvStats)
 library(DescTools)
+library(Hmisc)
 ```
+
 # Importação
 
-Considerando que o dataset completo possui cerca de 2GB de dados, foram carregadas apenas as 1.000.000 primeiras linhas, já que o dataset inteiro pode não caber em memória em diversas máquinas.
+Considerando que o dataset completo possui cerca de 2GB de dados, foram carregadas apenas as 200.000 primeiras linhas, já que o dataset inteiro pode não caber em memória em diversas máquinas e torna o processamento extramente custoso.
 
 ```{r}
 file <- 'enem/DADOS/MICRODADOS_ENEM_2020.csv'
@@ -41,7 +43,7 @@ enem.df <- fread(input=file,
            encoding = "Latin-1",
            quote = FALSE,
            na.strings = "",
-           nrows=1000000)
+           nrows=200000)
 
 head(enem.df)
 ```
@@ -50,9 +52,10 @@ head(enem.df)
 
 ## Verificação de possíveis atributos redundantes
 
-Para o cálculo de covariância, é necessário dropar colunas com valores constantes e tratar casos com desvio padrão 0 e com valores NA. [ x ]TODO: variaveis nominais
+Para o cálculo de covariância, é necessário dropar colunas com valores constantes e tratar casos com desvio padrão 0 e com valores NA.
 
 ### Atributos numéricos
+
 ```{r}
 # Tirar o nu_inscricao?
 enem.df_numeric <- as.data.frame(enem.df %>% select(where(is.numeric), -NU_ANO))
@@ -128,8 +131,10 @@ head(enem.df$CO_UF_PROVA)
 
 ```
 
-### Atributos categoricos
+### Atributos categóricos
+
 [ ]explicar rapidamente o coeficiente cramer
+
 ```{r}
 enem.df_character <- enem.df %>%
   select(where(is.character), -NU_INSCRICAO, -TX_RESPOSTAS_CN, -TX_RESPOSTAS_CH, -TX_RESPOSTAS_LC, -TX_RESPOSTAS_MT) 
@@ -165,29 +170,30 @@ cramers_v <- function(dados){
 rlt_cramer <-  cramers_v(enem.df_character)
 rlt_cramer
 ```
-Observa-se no resultado, que os atributos TX_GABARITO possuem o valor de coeficiente
-exatamente 1, isso se dá pois esse atributo é um vetor com as respostas de cada tipo prova e as provas de ciências da natureza e matemática são realizadas juntas, assim como as provas de linguagens e códigos e ciências humanas. 
+
+Observa-se no resultado que os atributos TX_GABARITO possuem o valor de coeficiente exatamente 1, isso se dá pois esse atributo é um vetor com as respostas de cada tipo prova e as provas de ciências da natureza e matemática são realizadas juntas, assim como as provas de linguagens e códigos e ciências humanas.
 
 ### Conclusão
+
 Os coeficientes utilizados nos ajudaram a entender os relacionamentos e associações existentes nesse conjunto de dados, dessa forma encontramos atributos que são redundantes e podem ser removidos sem prejudicar o conjunto de dados. São esses atributos:
 
-* TP_PRESENCA_CH mesmo compatibilidade com TP_PRESENCA_MT, TP_PRESENCA_CN e TP_PRESENCA_LC
-* CO_MUNICIPIO_PROVA contém CO_UF_PROVA 
-* TX_GABARITO_CN	mesma compatibilidade com TX_GABARITO_MT	
-* TX_GABARITO_CH	mesma compatibiilidade com TX_GABARITO_LC	
-* NO_MUNICIPIO_PROVA	contém SG_UF_PROVA	
-* NO_MUNICIPIO_ESC contém	SG_UF_ESC
+-   TP_PRESENCA_CH mesma compatibilidade com TP_PRESENCA_MT, TP_PRESENCA_CN e TP_PRESENCA_LC
+-   CO_MUNICIPIO_PROVA contém CO_UF_PROVA
+-   TX_GABARITO_CN mesma compatibilidade com TX_GABARITO_MT\
+-   TX_GABARITO_CH mesma compatibiilidade com TX_GABARITO_LC\
+-   NO_MUNICIPIO_PROVA contém SG_UF_PROVA\
+-   NO_MUNICIPIO_ESC contém SG_UF_ESC
 
 [ ] TODO: DROPAR OS ATRIBUTOS CITADOS e ANO
 
 ## Normalização
 
-A normalização será realizada nos atributos NU_NOTA_CH e NU_NOTA_MT que representam, respectivamente, a nota da prova de ciências humanas e a nota de redação. 
-O conjunto de dados possui diversos atributos sem significado semantico(n sei se eh essa a palavra), que apresentam um significado específico, como código de provas e código de municipio.
+A normalização será realizada nos atributos NU_NOTA_CH e NU_NOTA_MT que representam, respectivamente, a nota da prova de ciências humanas e a nota de redação. O conjunto de dados possui diversos atributos sem significado semantico(n sei se eh essa a palavra), que apresentam um significado específico, como código de provas e código de municipio.
 
 ### Aplicação no atributos NU_NOTA_CH e NU_NOTA_MT
-No bloco abaixo, as funções z score e min-max são aplicadas nos atributos escolhidos
-e os resultados são adicionados a um novo conjunto, chamado *enem.df_numeric_norm*,  derivado do conjunto original.
+
+No bloco abaixo, as funções z score e min-max são aplicadas nos atributos escolhidos e os resultados são adicionados a um novo conjunto, chamado *enem.df_numeric_norm*, derivado do conjunto original.
+
 ```{r}
 head(enem.df_numeric,50)
 options(scipen = 999) 
@@ -219,13 +225,13 @@ enem.df_numeric_norm <- enem.df_numeric %>%
 head(enem.df_numeric_norm)
 ```
 
-A seguir são realizado teste para analisar os efeitos da normalização com os 
-atributos redundantes.
+A seguir são realizados testes para analisar os efeitos da normalização com os atributos redundantes.
 
-###Efeitos normalização 
+### Efeitos normalização
+
 ```{r}
 
-# Teste de redundancia dos atributos numéricos normalizados no conjunto 
+# Teste de redundância dos atributos numéricos normalizados no conjunto 
 
 cor_fun <- function(x, y) {
   val <- tryCatch(
@@ -261,7 +267,6 @@ calculo_redundante_norm <- function(dados) {
 
       li_med <- medidas(dados[, col1], dados[, col2])
 
-
       if (!is.na(li_med$correlacao) & !is.na(li_med$determinacao)) {
         resultado <- add_row(resultado,
           colu1 = col1, colu2 = col2,
@@ -285,7 +290,8 @@ head(rlt_redun_norms)
 
 ```
 
-Com os dados do original
+Testes realizados com o dataset original
+
 ```{r}
 # Teste com atributos numéricos realizado no conjunto com os atributos originais, apenas observando o comportamento em comparação aos atributos escolhidos
 
@@ -327,6 +333,7 @@ head(rlt_redun_original)
 ```
 
 ### Conclusão
+
 Concluí-se que o uso das normalizações manteve o mesmo significado dos coeficientes quando comparado ao uso dos dados originais
 
 ## Manipulação de dados faltantes
@@ -341,16 +348,30 @@ na_count <- colSums(is.na(enem.df)) %>%
 names(na_count) <- c("count")
 
 na_count <- filter(na_count, count > 0) %>%
-  mutate(percentage = count * 100 / nrow(enem.df)) %>% arrange(desc(count))
+  mutate(percentage = count * 100 / nrow(enem.df)) %>%
+  select(percentage) %>%
+  arrange(desc(percentage))
 
 na_count
 ```
 
-Apesar de incrivelmente alto, esse número condiz com os dados do INEP, que afirma que em torno de 48% dos inscritos não compareceram à prova. Vale lembrar que essa aplicação ocorreu em janeiro de 2021, época em que a pandemia de coronavírus ainda era severa no Brasil.
+[ TODO Igor: trocar esse método por um hotdeck ou knn, tá muito ruim]
 
-[ ] TODO Igor: completar inputação de dados faltantes 
+Apesar de incrivelmente alto, esse número condiz com os dados do INEP, que afirma que em torno de 48% dos inscritos não compareceram à prova. Vale lembrar que essa aplicação ocorreu em janeiro de 2021, época em que a pandemia de coronavírus ainda era severa no Brasil. Ainda assim, uma quantidade muito significativa de 78% dos dados relacionados ao local de aplicação não estão disponíveis, não sabemos o motivo.  
+Como a maioria desses dados serve para identificação do local de aplicação, vamos focar na imputação do questionário socioeconômico, já que há linhas onde as pessoas compareceram à prova mas não responderam ao questionário. Dessa forma, também pretendemos reduzir um possível enviesamento ao imputar uma quantidade tão grande de dados.  
+Utilizaremos as questões de 1 a 6 para realizar o tratamento de dados faltantes. Por serem atributos que servem para identificar questões sociais e econômicas de um indivíduo, entendemos que uma abordagem baseada em tendência central pode não ser tão precisa, considerando a complexidade das análises que podem ser feitas a partir do dataset.  
+Sendo assim, vamos utilizar a imputação `aregImpute` do pacote Hmisc apresentado na disciplina, que utiliza média preditiva e pode trazer melhores resultados por se basear em outros atributos além dos em questão.  
+
+
+```{r}
+#aregImpute(~ Q001 + Q002 + Q003 + Q004 + Q005 + Q006,
+#           data = enem.df, n.impute = 5)
+```
+Como podemos observar, as medidas de R² para os valores imputados ficaram entre 50 a 56%, o que não é o melhor valor possível, mas pode ser considerado. Outras tentativas válidas seriam imputação por KNN ou regressão linear, porém, dado o tamanho do dataset, não conseguimos executá-las.  
+
 
 ## Manipulação de dados ruídosos e outliers
+
 ```{r}
 ruidos_outliers <- function(dados) {
   resultado <- tibble(
@@ -380,6 +401,92 @@ rslt_ruidos_outliers
 ```
 
 
+## Amostragem e técnicas de imputação
+
+Vamos selecionar 30% das amostras que não contém valores faltantes no dataset usando as funções `drop_na` e `sample_frac`. Em seguida, vamos selecionar a coluna `NU_NOTA_CH`, com as notas de ciências humanas, para realizar a imputação e comparação com diferentes métodos. Para a inserção de valores NA, vamos utilizar a função `rbinom` para acessar 2% dos valores através de uma distribuição de Bernoulli e trocá-los por NA.
+
+```{r}
+set.seed(42)
+
+amostragem <- drop_na(enem.df) %>%
+  sample_frac(0.3) %>%
+  mutate(NOTA_NA = NU_NOTA_CH)
+  amostragem$NOTA_NA[rbinom(nrow(amostragem), 1, 0.02) == 1] <- NA
+
+valores_na <- is.na(amostragem$NOTA_NA)
+sum(valores_na == TRUE)
+```
+
+Para as técnicas de imputação, vamos analisar as seguintes estratégias:
+- Média
+- Mediana
+- Aleatória
+- Regressão linear
+
+```{r}
+# Média
+
+media <- mean(amostragem$NOTA_NA, na.rm = TRUE)
+
+amostragem <- mutate(amostragem, NOTA_CH_MEAN = NOTA_NA)
+
+amostragem$NOTA_CH_MEAN[is.na(amostragem$NOTA_CH_MEAN)] <- media
+```
+
+```{r}
+# Mediana
+
+mediana <- median(amostragem$NOTA_NA, na.rm = TRUE)
+
+amostragem <- mutate(amostragem, NOTA_CH_MEDIAN = NOTA_NA)
+
+amostragem$NOTA_CH_MEDIAN[is.na(amostragem$NOTA_CH_MEDIAN)] <- mediana
+```
+
+```{r}
+# Aleatória
+
+amostragem <- mutate(amostragem, NOTA_CH_RANDOM = NOTA_NA)
+
+amostragem$NOTA_CH_RANDOM[is.na(amostragem$NOTA_CH_RANDOM)] <- runif(1, 0, 1000)
+```
+
+Para a regressão linear, vamos utilizar as notas nas outras provas como fixas e deixar a nota em Ciências Humanas como variável.
+
+```{r}
+# Regressão linear
+amostragem <- mutate(amostragem, NOTA_CH_REGRESSAO = NOTA_NA)
+
+linear <- lm(NOTA_CH_REGRESSAO ~ NU_NOTA_LC + NU_NOTA_MT + NU_NOTA_CN + NU_NOTA_REDACAO, data=amostragem)
+
+for (i in 1:nrow(amostragem)) {
+  if(is.na(amostragem$NOTA_CH_REGRESSAO[i])) {
+    nota <- linear$coefficients[1] + 
+      linear$coefficients[2]*amostragem$NU_NOTA_LC[i] + 
+      linear$coefficients[3]*amostragem$NU_NOTA_MT[i] + 
+      linear$coefficients[4]*amostragem$NU_NOTA_CN[i] + 
+      linear$coefficients[5]*amostragem$NU_NOTA_REDACAO[i]
+    
+    amostragem$NOTA_CH_REGRESSAO[i] <- nota
+  }
+}
+```
+
+```{r}
+amostragem <- mutate(amostragem, NOTA_CH_HOTDECK = NOTA_NA)
+
+hotdeck_impute <- select(amostragem, NU_NOTA_LC, NU_NOTA_MT,
+                         NU_NOTA_CN, NU_NOTA_REDACAO, NOTA_CH_HOTDECK) %>%
+  hotdeck("NOTA_CH_HOTDECK")
+```
+
+[TODO Igor: realizar análise sobre qual método funciona melhor]
+
+## Redução de dados
+
+[TODO Igor: fazer análise do PCA]
+
 ### Referências
-* https://rstudio-pubs-static.s3.amazonaws.com/558925_38b86f0530c9480fad4d029a4e4aea68.html#calculating-cramers-v-in-r
-* https://statsandr.com/blog/outliers-detection-in-r
+
+-   <https://rstudio-pubs-static.s3.amazonaws.com/558925_38b86f0530c9480fad4d029a4e4aea68.html#calculating-cramers-v-in-r>
+-   <https://statsandr.com/blog/outliers-detection-in-r>
