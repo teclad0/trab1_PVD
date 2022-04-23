@@ -31,6 +31,10 @@ library(EnvStats)
 library(DescTools)
 library(Hmisc)
 library(VIM)
+
+library(devtools)
+install_github("vqv/ggbiplot")
+library(ggbiplot)
 ```
 
 # Importação
@@ -508,13 +512,42 @@ A partir da análise, obtemos um valor de correlação acima de 99% para as impu
 Como nosso dataset possui diversos atributos categórico e textuais, vamos reutilizar a variável `enem.df_numeric` das primeiras etapas, que seleciona apenas as colunas numéricas da base de dados.
 
 ```{r}
+enem.df_pca <- as.data.frame(enem.df %>% select(where(is.numeric), -NU_ANO, -NU_INSCRICAO))
+# summary(prcomp(na.omit(enem.df_pca), center = TRUE, scale. = TRUE))
 
-summary(prcomp(na.omit(enem.df_numeric)))
+# Error in prcomp.default(na.omit(enem.df_pca), center = TRUE, scale. = TRUE) : 
+# cannot rescale a constant/zero column to unit variance
 ```
 
-Algo curioso encontra-se, pois o primeiro componente principal possui quase 99,9% da variância do dataset, fazendo com que os dois primeiros componentes resumam o dataset inteiro.
+O comando retorna um erro relacionado à divisão por 0 no processo de escala e, por isso, foi comentado para não gerar problemas na execução dos chunks. Uma ideia para entender o que está acontecendo é verificar se temos atributos com variância 0 no dataset.
 
-[TODO Igor: pensar melhor nessa análise do PCA]
+```{r}
+which(apply(na.omit(enem.df_pca), 2, var)==0)
+```
+Ou seja, esses atributos não possuem variância e podem atrapalhar nossa análise, além de impossibilitar uma escala na exibição do gráfico - o que gera a divisão por 0 e o erro do prcomp.
+
+```{r}
+enem.df_pca <- select(enem.df_pca, -TP_ST_CONCLUSAO, -TP_ANO_CONCLUIU,
+                          -IN_TREINEIRO, -TP_PRESENCA_CH, -TP_PRESENCA_CN,
+                          -TP_PRESENCA_LC, -TP_PRESENCA_MT)
+
+pca <-prcomp(na.omit(enem.df_pca), scale. = TRUE, center = TRUE)
+summary(pca)
+```
+```{r}
+ggbiplot(pca, alpha=0)
+```
+
+### Análise do PCA
+
+Podemos visualizar que o PCA passa de 70% só do componente 9 e só atinge 90% no 14º componente. Nessas condições e considerando o tamanho do dataset utilizado, o PCA pode não ser a melhor ferramenta para redução de dimensionalidade.  
+Podemos pensar em outras formas de análise, como MDS, porém esta não é possível dada a dimensão do dataset.
+
+```{r}
+# cmdscale(dist(enem.df_pca), eig=TRUE, k=2)
+
+# Error: cannot allocate vector of size 149.0 Gb
+```
 
 ### Referências
 
