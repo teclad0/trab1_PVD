@@ -30,6 +30,7 @@ library(outliers)
 library(EnvStats)
 library(DescTools)
 library(Hmisc)
+library(VIM)
 ```
 
 # Importação
@@ -422,6 +423,7 @@ Para as técnicas de imputação, vamos analisar as seguintes estratégias:
 - Mediana
 - Aleatória
 - Regressão linear
+- Hotdeck
 
 ```{r}
 # Média
@@ -478,13 +480,41 @@ amostragem <- mutate(amostragem, NOTA_CH_HOTDECK = NOTA_NA)
 hotdeck_impute <- select(amostragem, NU_NOTA_LC, NU_NOTA_MT,
                          NU_NOTA_CN, NU_NOTA_REDACAO, NOTA_CH_HOTDECK) %>%
   hotdeck("NOTA_CH_HOTDECK")
+
+amostragem$NOTA_CH_HOTDECK <- hotdeck_impute$NOTA_CH_HOTDECK
 ```
 
-[TODO Igor: realizar análise sobre qual método funciona melhor]
+### Análise dos resultados
+
+```{r}
+cor_media <- cor_fun(amostragem$NU_NOTA_CH, amostragem$NOTA_CH_MEAN)
+cor_mediana <- cor_fun(amostragem$NU_NOTA_CH, amostragem$NOTA_CH_MEDIAN)
+cor_aleatoria <- cor_fun(amostragem$NU_NOTA_CH, amostragem$NOTA_CH_RANDOM)
+cor_regressao <- cor_fun(amostragem$NU_NOTA_CH, amostragem$NOTA_CH_REGRESSAO)
+cor_hotdeck <- cor_fun(amostragem$NU_NOTA_CH, amostragem$NOTA_CH_HOTDECK)
+
+cor_names <- c("Média", "Mediana", "Aleatória", "Regressão", "Hotdeck")
+cor_values <- c(cor_media, cor_mediana, cor_aleatoria, cor_regressao, cor_hotdeck)
+
+analise_imputacao <- data.frame(cor_names, cor_values)
+analise_imputacao[order(analise_imputacao$cor_values, decreasing = TRUE),]
+
+```
+
+A partir da análise, obtemos um valor de correlação acima de 99% para as imputações por média, mediana e regressão, sendo que o maior valor foi para a regressão linear, o que indica que, para esses dados e nessas condições, este é o melhor método.
 
 ## Redução de dados
 
-[TODO Igor: fazer análise do PCA]
+Como nosso dataset possui diversos atributos categórico e textuais, vamos reutilizar a variável `enem.df_numeric` das primeiras etapas, que seleciona apenas as colunas numéricas da base de dados.
+
+```{r}
+
+summary(prcomp(na.omit(enem.df_numeric)))
+```
+
+Algo curioso encontra-se, pois o primeiro componente principal possui quase 99,9% da variância do dataset, fazendo com que os dois primeiros componentes resumam o dataset inteiro.
+
+[TODO Igor: pensar melhor nessa análise do PCA]
 
 ### Referências
 
