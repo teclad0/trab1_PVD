@@ -66,6 +66,7 @@ head(enem.df)
 ## Verificação de possíveis atributos redundantes
 
 Para o cálculo de covariância, é necessário dropar a coluna **NU_ANO** que possui o valor constante 2022 e tratar casos com desvio padrão 0 e com valores NA.
+
 ```{r}
 enem.df <- subset(enem.df, select = -NU_ANO)
 ```
@@ -139,8 +140,7 @@ resultado
 
 Através do resultado, é possível observar que os atributos TP_PRESENCA_CH e TP_PRESENCA_LC, TP_PRESENCA_MT e TP_PRESENCA_CN possuem r e R² iguais a um. Isso significa que todos os valores são exatamente iguais. Essa situação faz sentido pois as provas de linguagens e códigos e ciências humanas, e ciências da natureza e matemática são realizadas no mesmo dia, assim como as outras presenças, pois é bem provavél que se a pessoa foi para o primeiro dia de prova ela também vai para o segundo dia de prova, senão a prova é anulada.
 
-Além disso, os atributos CO_MUNICIPIO_PROVA e CO_UF_PROVA,  CO_MUNICIPIO_ESC	e CO_UF_ESC, CO_PROVA_CH	CO_PROVA_LC, CO_PROVA_CN	CO_PROVA_MT
-possuem um valor bem próximo de 1 , sendo 0.99 para o r e 0.99 para o R². Isso se deve ao fato de que o código do município sempre contém o código da UF em que a prova foi realizada, como pode ser visto abaixo:
+Além disso, os atributos CO_MUNICIPIO_PROVA e CO_UF_PROVA, CO_MUNICIPIO_ESC e CO_UF_ESC, CO_PROVA_CH CO_PROVA_LC, CO_PROVA_CN CO_PROVA_MT possuem um valor bem próximo de 1 , sendo 0.99 para o r e 0.99 para o R². Isso se deve ao fato de que o código do município sempre contém o código da UF em que a prova foi realizada, como pode ser visto abaixo:
 
 ```{r}
 head(enem.df$CO_MUNICIPIO_PROVA)
@@ -150,8 +150,7 @@ head(enem.df$CO_UF_PROVA)
 
 ### Atributos categóricos
 
-[ ]explicar rapidamente o coeficiente cramer
-[ ]explicar pq as tx_resposta* foram retiradas
+[ ]explicar rapidamente o coeficiente cramer [ ]explicar pq as tx_resposta\* foram retiradas
 
 ```{r}
 enem.df_character <- enem.df %>%
@@ -192,21 +191,19 @@ Os coeficientes utilizados nos ajudaram a entender os relacionamentos e associa�
 
 -   TP_PRESENCA_CH mesma compatibilidade com TP_PRESENCA_MT, TP_PRESENCA_CN e TP_PRESENCA_LC
 -   CO_MUNICIPIO_PROVA contém CO_UF_PROVA
--   CO_MUNICIPIO_ESC	e CO_UF_ESC,
--   CO_PROVA_CH e	CO_PROVA_LC,
--   CO_PROVA_CN	 e CO_PROVA_MT, 
+-   CO_MUNICIPIO_ESC e CO_UF_ESC,
+-   CO_PROVA_CH e CO_PROVA_LC,
+-   CO_PROVA_CN e CO_PROVA_MT,
 -   CO_MUNICIPIO_PROVA e CO_MUNICIPIO_ESC
 -   TX_GABARITO_CN mesma compatibilidade com TX_GABARITO_MT\
 -   TX_GABARITO_CH mesma compatibiilidade com TX_GABARITO_LC
 -   SG_UF_PROVA e SG_UF_ESC
-
 
 ```{r}
 enem.df <- subset(enem.df, select = -c(TP_PRESENCA_MT, TP_PRESENCA_CN, TP_PRESENCA_LC, CO_UF_PROVA, CO_UF_ESC, CO_PROVA_LC, CO_PROVA_MT, CO_MUNICIPIO_ESC, TX_GABARITO_MT, TX_GABARITO_LC, SG_UF_ESC))
 
 enem.df_numeric <- subset(enem.df_numeric, select = -c(TP_PRESENCA_MT, TP_PRESENCA_CN, TP_PRESENCA_LC, CO_UF_PROVA, CO_UF_ESC, CO_PROVA_LC, CO_PROVA_MT, CO_MUNICIPIO_ESC))
 ```
-
 
 ## Normalização
 
@@ -345,8 +342,6 @@ head(rlt_redun_original)
 
 Concluí-se que o uso das normalizações manteve o mesmo significado dos coeficientes quando comparado ao uso dos dados originais
 
-
-
 ## Manipulação de dados faltantes
 
 Primeiramente, vamos analisar o nosso dataset para encontrar quais e quantos são os dados faltantes:
@@ -381,14 +376,12 @@ enem.df <- hotdeck(enem.df, c("Q001", "Q002", "Q003", "Q004", "Q005", "Q006"), i
 head(enem.df)
 ```
 
-
-
 ## Manipulação de dados ruídosos e outliers
 
 dixon so funciona para ate 20 observaçeos
 
-Verificando se existe algum valor que distoa dos dados aceitos para cada coluna 
-numérica
+Verificando se existe algum valor que distoa dos dados aceitos para cada coluna numérica
+
 ```{r}
 uniq.df <- function(dados){
      for (col in colnames(dados)) {
@@ -401,6 +394,7 @@ uniq.df <- function(dados){
 uniq.df(enem.df_numeric)
 
 ```
+
 Todos os atributos estão dentro dos valores aceitos de cada atributo.
 
 ```{r}
@@ -454,13 +448,12 @@ rst_quant
 rslt_out_grub_rosner
 
 ```
+
 ### Análise dos resultados
 
 Vantagens de cada método:
 
 Desvantagens de cada método:
-
-
 
 ## Amostragem e técnicas de imputação
 
@@ -607,14 +600,90 @@ Podemos pensar em outras formas de análise, como MDS, porém esta não é poss�
 ```{r}
 conj_1 <- enem.df
 
-conj_1
-
 ggplot(conj_1) +
   geom_histogram(aes(x= TP_PRESENCA_CH, fill=Q024), position = position_dodge(), stat="count")
 
 ```
 
+**Questão 2:** Qual a média de desempenho na prova por cor/raça declarada?\
+Vamos utilizar um boxplot para analisar, além da média, a distribuição de pontuações para cada cor/raça declarada no momento da inscrição da prova. Para isso, também vamos criar uma função para calcular a média das 4 provas e redação, o que significa que apenas poderemos usar os participantes que compareceram à prova.
 
+```{r}
+# filtro pelos candidatos presentes na prova
+# e seleção apenas dos atributos de interesse
+notas_cor_raca <- filter(enem.df, TP_PRESENCA_CN == 1 &
+                    TP_PRESENCA_CH == 1 & TP_STATUS_REDACAO == 1) %>%
+                  select(NU_NOTA_CN, NU_NOTA_CH, NU_NOTA_LC,
+                    NU_NOTA_MT, NU_NOTA_REDACAO, TP_COR_RACA)
+
+# rotulando dados categóricos
+notas_cor_raca$TP_COR_RACA <- factor(notas_cor_raca$TP_COR_RACA,
+                                levels = c(0,1,2,3,4,5,6),
+                                labels=c('Não declarado',
+                                'Branca','Preta',
+                                'Parda','Amarela',
+                                'Indígena',
+                                'Não dispõe da informação'))
+
+# função de média simples para a prova
+enem_mean <- function(CN, CH, LC, MT, RD) {
+  (CN+CH+LC+MT+RD)/5
+}
+
+# conjunto contendo apenas média e raça
+dados_PLOT2 <- summarise(notas_cor_raca, "Cor/Raça" = TP_COR_RACA,
+                      "Nota média" = enem_mean(NU_NOTA_CN,
+                      NU_NOTA_CH, NU_NOTA_LC, NU_NOTA_MT, NU_NOTA_REDACAO))
+
+media_geral <- mean(dados_PLOT2$`Nota média`)
+
+# boxplot com uma linha na direção da média geral da prova
+ggplot(data = dados_PLOT2) +
+  geom_boxplot(outlier.size=.7, mapping = aes(x = `Cor/Raça`, y = `Nota média`)) +
+  geom_hline(yintercept = media_geral, color = "blue")
+```
+
+**Questão 3:** Qual a proporção entre candidatos presentes e ausentes na prova por faixa de renda mensal?\
+Nessa questão, utilizaremos o inverso da questão anterior - apenas os dados com TP_PRESENCA = 0, lembrando que a informação sobre renda familiar encontra-se na questão 006 do formulário socioeconômico.
+
+```{r}
+# removendo candidatos eliminados da prova para melhorar a visualização
+presenca_renda <- filter(enem.df, TP_PRESENCA_CN < 2 & TP_PRESENCA_CH < 2 &
+                         TP_PRESENCA_LC < 2 & TP_PRESENCA_CH < 2) %>%
+                  select(TP_PRESENCA_CN, Q006)
+
+# rotulando dados categóricos
+presenca_renda$TP_PRESENCA_CN <- factor(presenca_renda$TP_PRESENCA_CN, levels = c(0,1),
+                                    labels=c('Faltou à prova',
+                                             'Presente na prova'))
+
+# rotulando dados categóricos
+presenca_renda$Q006 <- factor(presenca_renda$Q006,levels =  c('A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q'),
+                         labels=c('Nenhuma renda.',
+                                  'Até R$ 1.045,00',
+                                  'De R$ 1.045,01 até R$ 1.567,50',
+                                  'De R$ 1.567,51 até R$ 2.090,00',
+                                  'De R$ 2.090,01 até R$ 2.612,50',
+                                  'De R$ 2.612,51 até R$ 3.135,00',
+                                  'De R$ 3.135,01 até R$ 4.180,00',
+                                  'De R$ 4.180,01 até R$ 5.225,00',
+                                  'De R$ 5.225,01 até R$ 6.270,00',
+                                  'De R$ 6.270,01 até R$ 7.315,00',
+                                  'De R$ 7.315,01 até R$ 8.360,00',
+                                  'De R$ 8.360,01 até R$ 9.405,00',
+                                  'De R$ 9.405,01 até R$ 10.450,00',
+                                  'De R$ 10.450,01 até R$ 12.540,00',
+                                  'De R$ 12.540,01 até R$ 15.675,00',
+                                  'De R$ 15.675,01 até R$ 20.900,00',
+                                  'Acima de R$ 20.900,00'))
+
+# plot de histograma separando dados por renda familiar
+ggplot(presenca_renda) +
+  geom_histogram(aes(x= TP_PRESENCA_CN, fill=Q006), position = position_dodge(), stat="count") +
+  labs(x = "Presença", y = "Candidatos")
+```
+
+**Questão 4:** [TODO Igor]
 
 # Referências
 
