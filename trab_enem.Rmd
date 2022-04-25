@@ -29,7 +29,7 @@ Os dados foram obtidos através da plataforma oficial do Governo Federal e podem
 
 # Inicialização
 
-```{r}
+```{r echo=T, results='hide'}
 library(tidyverse)
 library(data.table)
 library(rcompanion)
@@ -39,10 +39,10 @@ library(outliers)
 library(EnvStats)
 library(DescTools)
 library(VIM)
-
-# library(devtools)
-# install_github("vqv/ggbiplot")
 library(ggbiplot)
+
+options(scipen = 999)
+
 ```
 
 # Importação
@@ -65,16 +65,18 @@ head(enem.df)
 
 ## Verificação de possíveis atributos redundantes
 
-Para o cálculo de covariância, é necessário dropar colunas com valores constantes e tratar casos com desvio padrão 0 e com valores NA.
+Para o cálculo de covariância, é necessário dropar a coluna **NU_ANO** que possui o valor constante 2022 e tratar casos com desvio padrão 0 e com valores NA.
+```{r}
+enem.df <- subset(enem.df, select = -NU_ANO)
+```
 
 ### Atributos numéricos
 
 ```{r}
-# Tirar o nu_inscricao?
-enem.df_numeric <- as.data.frame(enem.df %>% select(where(is.numeric), -NU_ANO))
+enem.df_numeric <- as.data.frame(enem.df %>% select(where(is.numeric)))
 
 cor_fun <- function(x, y) {
-  val <- tryCatch(cor(x, y), error = function(e) e, warning = function(w) w)
+  val <- tryCatch(cor(x, y, use="complete.obs"), error = function(e) e, warning = function(w) w)
   if (any(class(val) %in% c("simpleWarning", "warning"))) {
     return(mean(x))
   } else {
@@ -104,7 +106,8 @@ calculo_redundante <- function(dados){
       }
       li_med <- medidas(dados[, col1], dados[, col2])
 
-
+      #print(paste(col1,"::",col2))
+      
       # Retornar apenas atributos com valores relevantes
       if (!is.na(li_med$correlacao) & !is.na(li_med$determinacao)) {
         if (li_med$correlacao > 0.7 |
@@ -136,7 +139,8 @@ resultado
 
 Através do resultado, é possível observar que os atributos TP_PRESENCA_CH e TP_PRESENCA_LC, TP_PRESENCA_MT e TP_PRESENCA_CN possuem r e R² iguais a um. Isso significa que todos os valores são exatamente iguais. Essa situação faz sentido pois as provas de linguagens e códigos e ciências humanas, e ciências da natureza e matemática são realizadas no mesmo dia, assim como as outras presenças, pois é bem provavél que se a pessoa foi para o primeiro dia de prova ela também vai para o segundo dia de prova, senão a prova é anulada.
 
-Além disso, os atributos CO_MUNICIPIO_PROVA e CO_UF_PROVA possuem um valor bem próximo de 1, sendo 0.99 para o r e 0.99 para o R². Isso se deve ao fato de que o código do município sempre contém o código da UF em que a prova foi realizada.
+Além disso, os atributos CO_MUNICIPIO_PROVA e CO_UF_PROVA,  CO_MUNICIPIO_ESC	e CO_UF_ESC, CO_PROVA_CH	CO_PROVA_LC, CO_PROVA_CN	CO_PROVA_MT
+possuem um valor bem próximo de 1 , sendo 0.99 para o r e 0.99 para o R². Isso se deve ao fato de que o código do município sempre contém o código da UF em que a prova foi realizada, como pode ser visto abaixo:
 
 ```{r}
 head(enem.df$CO_MUNICIPIO_PROVA)
@@ -147,6 +151,7 @@ head(enem.df$CO_UF_PROVA)
 ### Atributos categóricos
 
 [ ]explicar rapidamente o coeficiente cramer
+[ ]explicar pq as tx_resposta* foram retiradas
 
 ```{r}
 enem.df_character <- enem.df %>%
@@ -164,11 +169,6 @@ cramers_v <- function(dados){
     for(col2 in colnames(dados)){
       if (col1 != col2) {
         
-      #print(paste(col1, col2))
-      
-      #c <- cv(unlist(dados[,..col1]), unlist(dados[,..col2]))
-      #c <- cv(unlist(dados[,col1]), unlist(dados[,col2]))
-      #print(c)
       c <- CramerV(unlist(dados[,..col1]), unlist(dados[,..col2]), useNA="ifany")
             if( c > 0.7){
               rslt <- add_row(rslt, colu1=col1, colu2=col2, cramer=c)}
@@ -192,12 +192,21 @@ Os coeficientes utilizados nos ajudaram a entender os relacionamentos e associa�
 
 -   TP_PRESENCA_CH mesma compatibilidade com TP_PRESENCA_MT, TP_PRESENCA_CN e TP_PRESENCA_LC
 -   CO_MUNICIPIO_PROVA contém CO_UF_PROVA
+-   CO_MUNICIPIO_ESC	e CO_UF_ESC,
+-   CO_PROVA_CH e	CO_PROVA_LC,
+-   CO_PROVA_CN	 e CO_PROVA_MT, 
+-   CO_MUNICIPIO_PROVA e CO_MUNICIPIO_ESC
 -   TX_GABARITO_CN mesma compatibilidade com TX_GABARITO_MT\
--   TX_GABARITO_CH mesma compatibiilidade com TX_GABARITO_LC\
--   NO_MUNICIPIO_PROVA contém SG_UF_PROVA\
--   NO_MUNICIPIO_ESC contém SG_UF_ESC
+-   TX_GABARITO_CH mesma compatibiilidade com TX_GABARITO_LC
+-   SG_UF_PROVA e SG_UF_ESC
 
-[ ] TODO: DROPAR OS ATRIBUTOS CITADOS e ANO
+
+```{r}
+enem.df <- subset(enem.df, select = -c(TP_PRESENCA_MT, TP_PRESENCA_CN, TP_PRESENCA_LC, CO_UF_PROVA, CO_UF_ESC, CO_PROVA_LC, CO_PROVA_MT, CO_MUNICIPIO_ESC, TX_GABARITO_MT, TX_GABARITO_LC, SG_UF_ESC))
+
+enem.df_numeric <- subset(enem.df_numeric, select = -c(TP_PRESENCA_MT, TP_PRESENCA_CN, TP_PRESENCA_LC, CO_UF_PROVA, CO_UF_ESC, CO_PROVA_LC, CO_PROVA_MT, CO_MUNICIPIO_ESC))
+```
+
 
 ## Normalização
 
@@ -245,19 +254,6 @@ A seguir são realizados testes para analisar os efeitos da normalização com o
 ```{r}
 
 # Teste de redundância dos atributos numéricos normalizados no conjunto 
-
-cor_fun <- function(x, y) {
-  val <- tryCatch(
-    cor(x, y, use = "complete.obs"),
-    error = function(e) e,
-    warning = function(w) w
-  )
-  if (any(class(val) %in% c("simpleWarning", "warning"))) {
-    return(mean(x))
-  } else {
-    return(val)
-  }
-}
 
 calculo_redundante_norm <- function(dados) {
   resultado <- tibble(
@@ -349,6 +345,8 @@ head(rlt_redun_original)
 
 Concluí-se que o uso das normalizações manteve o mesmo significado dos coeficientes quando comparado ao uso dos dados originais
 
+
+
 ## Manipulação de dados faltantes
 
 Primeiramente, vamos analisar o nosso dataset para encontrar quais e quantos são os dados faltantes:
@@ -383,35 +381,86 @@ enem.df <- hotdeck(enem.df, c("Q001", "Q002", "Q003", "Q004", "Q005", "Q006"), i
 head(enem.df)
 ```
 
+
+
 ## Manipulação de dados ruídosos e outliers
 
-```{r}
-ruidos_outliers <- function(dados) {
-  resultado <- tibble(
-    atr = character(),
-    grubb = numeric(),
-    dixon = numeric(),
-    rosner = numeric()
-  )
+dixon so funciona para ate 20 observaçeos
 
-  for (col1 in colnames(dados)) {
-    print(col1)
-    g <- grubbs.test(unlist(dados[,col1]))$p.value
-    d <- 0
-    #d <- dixon.test(unlist(dados[,col1]))
-    r <- rosnerTest(unlist(dados[,col1]))$n.outliers
+Verificando se existe algum valor que distoa dos dados aceitos para cada coluna 
+numérica
+```{r}
+uniq.df <- function(dados){
+     for (col in colnames(dados)) {
+      li <- unique(dados[,col])
+      print(col)
+      print(li)
+        
+      }
+}
+uniq.df(enem.df_numeric)
+
+```
+Todos os atributos estão dentro dos valores aceitos de cada atributo.
+
+```{r}
+# removendo binario e codigos
+enem.df_numeric_out <- enem.df_numeric %>% select(-CO_MUNICIPIO_PROVA, -CO_PROVA_CN, -CO_PROVA_CH, -TP_LINGUA, -IN_TREINEIRO, -TP_LOCALIZACAO_ESC, -TP_PRESENCA_CH)
+
+quant <- function(dados){
+   resultado <- tibble(
+      atr = character(),
+      min = numeric(),
+      max = numeric()
+    )
+  for (col in colnames(dados)){
     
-    resultado <- add_row(atr= col1, grubb= g, dixon= d, rosner= r)
+    lim_min <- quantile(dados[,col], .01, na.rm=TRUE)
+    lim_max <- quantile(dados[,col], .99, na.rm=TRUE)
+    
+    resultado <- add_row(resultado, atr= col, min= lim_min, max= lim_max)
   }
-  
-  #resultado <- resultado %>% arrange(desc(r), desc(R2))
   return(resultado)
 }
 
-rslt_ruidos_outliers <- ruidos_outliers(enem.df_numeric)
-rslt_ruidos_outliers
+rst_quant <- quant(enem.df_numeric_out)
+
+out_grub_rosner <- function(dados) {
+  resultado <- tibble(
+    atr = character(),
+    grubb_p = numeric(),
+    grubb_v = character(),
+    rosner_v = numeric(),
+    rosner_out = logical()
+
+  )
+  for (col1 in colnames(dados)) {
+    r <- rosnerTest(unlist(dados[,col1]), k=1, warn=FALSE)
+    r_v <- r$all.stats$Value
+    r_o <- r$all.stats$Outlier
+    
+    g <- grubbs.test(unlist(dados[,col1]))
+    g_p <- g$p.value
+    g_v <- g$alternative
+    
+    resultado <- add_row( resultado,atr= col1, grubb_p = g_p, grubb_v = g_v, rosner_v = r_v, rosner_out = r_o)
+  }
+  return(resultado)
+}
+
+rslt_out_grub_rosner <- out_grub_rosner(enem.df_numeric_out)
+
+rst_quant
+rslt_out_grub_rosner
 
 ```
+### Análise dos resultados
+
+Vantagens de cada método:
+
+Desvantagens de cada método:
+
+
 
 ## Amostragem e técnicas de imputação
 
@@ -542,7 +591,7 @@ summary(pca)
 ggbiplot(pca, alpha=0)
 ```
 
-### Análise do PCA
+### Análise dos resultados
 
 Podemos visualizar que o PCA passa de 70% só do componente 9 e só atinge 90% no 14º componente. Nessas condições e considerando o tamanho do dataset utilizado, o PCA pode não ser a melhor ferramenta para redução de dimensionalidade.\
 Podemos pensar em outras formas de análise, como MDS, porém esta não é possível dada a dimensão do dataset.
@@ -553,7 +602,21 @@ Podemos pensar em outras formas de análise, como MDS, porém esta não é poss�
 # Error: cannot allocate vector of size 149.0 Gb (!!!)
 ```
 
-### Referências
+# Visualização dos dados
+
+```{r}
+conj_1 <- enem.df
+
+conj_1
+
+ggplot(conj_1) +
+  geom_histogram(aes(x= TP_PRESENCA_CH, fill=Q024), position = position_dodge(), stat="count")
+
+```
+
+
+
+# Referências
 
 -   <https://rstudio-pubs-static.s3.amazonaws.com/558925_38b86f0530c9480fad4d029a4e4aea68.html#calculating-cramers-v-in-r>
 -   <https://statsandr.com/blog/outliers-detection-in-r>
