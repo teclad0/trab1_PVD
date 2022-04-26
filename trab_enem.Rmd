@@ -40,6 +40,8 @@ library(EnvStats)
 library(DescTools)
 library(VIM)
 library(ggbiplot)
+library(plotly)
+library(treemap)
 
 options(scipen = 999)
 
@@ -614,6 +616,21 @@ ggplot(conj_1) +
 
 ```
 
+# Visualização de dados em forma de hierarquia
+```{r}
+conj_hie <- enem.df %>%
+  filter(TP_PRESENCA_CH == 0) %>%
+  group_by(SG_UF_PROVA, NO_MUNICIPIO_PROVA  ) %>%
+  summarise(faltantes= n())
+
+conj_hie  
+
+treemap(conj_hie,
+        index=c("SG_UF_PROVA", "NO_MUNICIPIO_PROVA"),
+        vSize="faltantes"
+        )
+
+```
 
 
 # Referências
