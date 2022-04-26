@@ -1,35 +1,47 @@
 ---
-title: "Trabalho final"
-output: html_document
-date: '2022-04-01'
+title: "Relatório"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Universidade Federal de São Carlos
+## Universidade Federal de São Carlos Bacharelado em Ciência da Computação
 
-## Bacharelado em Ciência da Computação
+**Processamento e Visualização de Dados\
+Professor: Anderson Chaves Carniel**
 
-Processamento e Visualização de Dados\
-Professor: Anderson Chaves Carniel
-
-Estudantes:\
+**Estudantes:\
 Hemilyn Stephanye Aguiar Porfirio - RA 759392\
-Igor Lúcio Manta Guedes - RA 743185
+Igor Lúcio Manta Guedes - RA 743185**
 
 # Descrição do conjunto
 
-O conjunto contém os dados de realização do Exame Nacional do Ensino Médio, aplicado nos dias 17 e 24 de janeiro de 2021 (por conta da pandemia de coronavírus). Também houve, pela primeira vez, a aplicação digital da prova, em 31 de janeiro e 07 de fevereiro, além da segunda aplicação para Pessoas Privadas de Liberdade, em 24 e 25 de fevereiro.
+O conjunto contém os dados de realização do Exame Nacional do Ensino
+Médio, aplicado nos dias 17 e 24 de janeiro de 2021 (por conta da
+pandemia de coronavírus). Também houve, pela primeira vez, a aplicação
+digital da prova, em 31 de janeiro e 07 de fevereiro, além da segunda
+aplicação para Pessoas Privadas de Liberdade, em 24 e 25 de fevereiro.
 
-No total, existem 76 atributos e 5783109 linhas, contemplando dados de inscrição anonimizados, locais de realização da prova, pontuações e questionário socioeconômico (aplicado na etapa de inscrição). Por conta do grande número de atributos e descrições, o arquivo com o dicionário está disponibilizado neste link com acesso pelo email institucional da UFSCar: <https://drive.google.com/file/d/1BjBYUCjRMX78L6ddpWAI8tfIrIjMzuK8/view?usp=sharing>
+No total, existem 76 atributos e 5783109 linhas, contemplando dados de
+inscrição anonimizados, locais de realização da prova, pontuações e
+questionário socioeconômico (aplicado na etapa de inscrição). Por conta
+do grande número de atributos e descrições, o arquivo com o dicionário
+está disponibilizado neste link com acesso pelo email institucional da
+UFSCar:
+<https://drive.google.com/file/d/1BjBYUCjRMX78L6ddpWAI8tfIrIjMzuK8/view?usp=sharing>
 
-Os dados foram obtidos através da plataforma oficial do Governo Federal e podem ser acessados em: <https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/microdados/enem>
+Os dados foram obtidos através da plataforma oficial do Governo Federal
+e podem ser acessados em:
+<https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/microdados/enem>
 
 # Inicialização
 
-```{r echo=T, results='hide'}
+```{r, results='hide'}
 library(tidyverse)
 library(data.table)
 library(rcompanion)
@@ -42,6 +54,7 @@ library(VIM)
 library(ggbiplot)
 library(plotly)
 library(treemap)
+library(DT)
 
 options(scipen = 999)
 
@@ -49,7 +62,10 @@ options(scipen = 999)
 
 # Importação
 
-Considerando que o dataset completo possui cerca de 2GB de dados, foram carregadas apenas as 200.000 primeiras linhas, já que o dataset inteiro pode não caber em memória em diversas máquinas e torna o processamento extramente custoso.
+Considerando que o dataset completo possui cerca de 2GB de dados, foram
+carregadas apenas as 200.000 primeiras linhas, já que o dataset inteiro
+pode não caber em memória em diversas máquinas e torna o processamento
+extramente custoso.
 
 ```{r}
 file <- 'enem/DADOS/MICRODADOS_ENEM_2020.csv'
@@ -67,7 +83,18 @@ head(enem.df)
 
 ## Verificação de possíveis atributos redundantes
 
-Para o cálculo de covariância, é necessário dropar a coluna **NU_ANO** que possui o valor constante 2022 e tratar casos com desvio padrão 0 e com valores NA.
+Atributos redundantes são variáveis altamente correlacionadas, ou seja,
+que representam características semelhantes ou diretamente
+proporcionais. Afim de verificar essa presença no conjunto de dados,
+será usado os seguintes coeficientes: covariância e determinação. O
+coeficiente de correlação mensura o grau de independência entre duas
+variáveis aleatórias. O coeficiente de determinação mensura o quão uma
+variável determina a outra. Os coeficientes são úteis para identificar
+padrões nos dados e mensurar a compabilidade entre os valores Para o
+cálculo de correlação, é necessário dropar a coluna **NU_ANO** que
+possui o valor constante 2022 e tratar casos com desvio padrão 0 e com
+valores NA.
+
 ```{r}
 enem.df <- subset(enem.df, select = -NU_ANO)
 ```
@@ -108,8 +135,6 @@ calculo_redundante <- function(dados){
       }
       li_med <- medidas(dados[, col1], dados[, col2])
 
-      #print(paste(col1,"::",col2))
-      
       # Retornar apenas atributos com valores relevantes
       if (!is.na(li_med$correlacao) & !is.na(li_med$determinacao)) {
         if (li_med$correlacao > 0.7 |
@@ -135,25 +160,33 @@ calculo_redundante <- function(dados){
 }
 
 resultado <- calculo_redundante(enem.df_numeric)
-resultado
+resultado %>%
+  DT::datatable()
 
 ```
 
-Através do resultado, é possível observar que os atributos TP_PRESENCA_CH e TP_PRESENCA_LC, TP_PRESENCA_MT e TP_PRESENCA_CN possuem r e R² iguais a um. Isso significa que todos os valores são exatamente iguais. Essa situação faz sentido pois as provas de linguagens e códigos e ciências humanas, e ciências da natureza e matemática são realizadas no mesmo dia, assim como as outras presenças, pois é bem provavél que se a pessoa foi para o primeiro dia de prova ela também vai para o segundo dia de prova, senão a prova é anulada.
+Através do resultado, é possível observar que os atributos
+**TP_PRESENCA_CH e TP_PRESENCA_LC, TP_PRESENCA_MT e TP_PRESENCA_CN**
+possuem r e R² iguais a um. Isso significa que todos os valores são
+exatamente iguais. Essa situação faz sentido pois as provas de
+linguagens e códigos e ciências humanas, e ciências da natureza e
+matemática são realizadas no mesmo dia, assim como as outras presenças,
+pois é bem provavél que se a pessoa foi para o primeiro dia de prova ela
+também vai para o segundo dia de prova, senão a prova é anulada.
 
-Além disso, os atributos CO_MUNICIPIO_PROVA e CO_UF_PROVA,  CO_MUNICIPIO_ESC	e CO_UF_ESC, CO_PROVA_CH	CO_PROVA_LC, CO_PROVA_CN	CO_PROVA_MT
-possuem um valor bem próximo de 1 , sendo 0.99 para o r e 0.99 para o R². Isso se deve ao fato de que o código do município sempre contém o código da UF em que a prova foi realizada, como pode ser visto abaixo:
-
-```{r}
-head(enem.df$CO_MUNICIPIO_PROVA)
-head(enem.df$CO_UF_PROVA)
-
-```
+Além disso, foram identificados outros atributos redundantes: \*
+**CO_MUNICIPIO_PROVA e CO_UF_PROVA, CO_MUNICIPIO_ESC e CO_UF_ESC**, isso
+se deve ao fato de que o código do município sempre contém o código da
+UF\
+\* **CO_PROVA_CH e CO_PROVA_LC, CO_PROVA_CN e CO_PROVA_MT** possuem um
+valor bem próximo de 1 , sendo 0.99 para o r e 0.99 para o R². Isso se
+deve ao fato de que há códigos para as provas então provas que são
+ofertadas no mesmo dia possuem o mesmo código.
 
 ### Atributos categóricos
 
-[ ]explicar rapidamente o coeficiente cramer
-[ ]explicar pq as tx_resposta* foram retiradas
+Para a execução do código, foi necessário retirar os atributos
+NU_INSCRICAO e TX_RESPOSTAS\_\* pois sua cardinalidade é muito alta.
 
 ```{r}
 enem.df_character <- enem.df %>%
@@ -183,45 +216,62 @@ cramers_v <- function(dados){
 }
 
 rlt_cramer <-  cramers_v(enem.df_character)
-rlt_cramer
+rlt_cramer%>%
+  DT::datatable()
+
 ```
 
-Observa-se no resultado que os atributos TX_GABARITO possuem o valor de coeficiente exatamente 1, isso se dá pois esse atributo é um vetor com as respostas de cada tipo prova e as provas de ciências da natureza e matemática são realizadas juntas, assim como as provas de linguagens e códigos e ciências humanas.
+Observa-se no resultado que os atributos **TX_GABARITO** possuem o valor
+de coeficiente exatamente 1, isso se dá pois esse atributo é um vetor
+com as respostas de cada tipo prova e as provas de ciências da natureza
+e matemática são realizadas juntas, assim como as provas de linguagens e
+códigos e ciências humanas.
 
 ### Conclusão
 
-Os coeficientes utilizados nos ajudaram a entender os relacionamentos e associações existentes nesse conjunto de dados, dessa forma encontramos atributos que são redundantes e podem ser removidos sem prejudicar o conjunto de dados. São esses atributos:
+Os coeficientes utilizados nos ajudaram a entender os relacionamentos e
+associações existentes nesse conjunto de dados, dessa forma encontramos
+atributos que são redundantes e podem ser removidos sem prejudicar o
+conjunto de dados. São esses atributos:
 
--   TP_PRESENCA_CH mesma compatibilidade com TP_PRESENCA_MT, TP_PRESENCA_CN e TP_PRESENCA_LC
+-   TP_PRESENCA_CH mesma compatibilidade com TP_PRESENCA_MT,
+    TP_PRESENCA_CN e TP_PRESENCA_LC
 -   CO_MUNICIPIO_PROVA contém CO_UF_PROVA
--   CO_MUNICIPIO_ESC	e CO_UF_ESC,
--   CO_PROVA_CH e	CO_PROVA_LC,
--   CO_PROVA_CN	 e CO_PROVA_MT, 
+-   CO_MUNICIPIO_ESC e CO_UF_ESC,
+-   CO_PROVA_CH e CO_PROVA_LC,
+-   CO_PROVA_CN e CO_PROVA_MT,
 -   CO_MUNICIPIO_PROVA e CO_MUNICIPIO_ESC
 -   TX_GABARITO_CN mesma compatibilidade com TX_GABARITO_MT\
 -   TX_GABARITO_CH mesma compatibiilidade com TX_GABARITO_LC
 -   SG_UF_PROVA e SG_UF_ESC
 
-
 ```{r}
+enem.df_copy <- cbind(enem.df)
+
 enem.df <- subset(enem.df, select = -c(TP_PRESENCA_MT, TP_PRESENCA_CN, TP_PRESENCA_LC, CO_UF_PROVA, CO_UF_ESC, CO_PROVA_LC, CO_PROVA_MT, CO_MUNICIPIO_ESC, TX_GABARITO_MT, TX_GABARITO_LC, SG_UF_ESC))
 
 enem.df_numeric <- subset(enem.df_numeric, select = -c(TP_PRESENCA_MT, TP_PRESENCA_CN, TP_PRESENCA_LC, CO_UF_PROVA, CO_UF_ESC, CO_PROVA_LC, CO_PROVA_MT, CO_MUNICIPIO_ESC))
 ```
 
-
 ## Normalização
 
-A normalização será realizada nos atributos NU_NOTA_CH e NU_NOTA_MT que representam, respectivamente, a nota da prova de ciências humanas e a nota de redação. O conjunto de dados possui diversos atributos sem significado semantico(n sei se eh essa a palavra), que apresentam um significado específico, como código de provas e código de municipio.
+Nessa seção sera realizada a normalização dos dados, um processo que
+ajusta os valores mensurados de acordo com diferentes escalas, é
+importante pois um conjunto de dados pode possuir diferentes escalas que
+vão dificultar uma análise e execução de modelos. A normalização será
+realizada nos atributos **NU_NOTA_CH e NU_NOTA_MT** que representam,
+respectivamente, a nota da prova de ciências humanas e a nota de
+redação. O conjunto de dados possui diversos atributos sem significado
+semantico(n sei se eh essa a palavra), que apresentam um significado
+específico, como código de provas e código de municipio.
 
 ### Aplicação no atributos NU_NOTA_CH e NU_NOTA_MT
 
-No bloco abaixo, as funções z score e min-max são aplicadas nos atributos escolhidos e os resultados são adicionados a um novo conjunto, chamado *enem.df_numeric_norm*, derivado do conjunto original.
+No bloco abaixo, as funções z score e min-max são aplicadas nos
+atributos escolhidos e os resultados são adicionados a um novo conjunto,
+chamado *enem.df_numeric_norm*, derivado do conjunto original.
 
 ```{r}
-head(enem.df_numeric,50)
-options(scipen = 999) 
-
 z_score_norm <- function(x) {
   (x - mean(x, na.rm = TRUE)) / sd(x, na.rm = TRUE)
 }
@@ -249,7 +299,8 @@ enem.df_numeric_norm <- enem.df_numeric %>%
 head(enem.df_numeric_norm)
 ```
 
-A seguir são realizados testes para analisar os efeitos da normalização com os atributos redundantes.
+A seguir são realizados testes para analisar os efeitos da normalização
+com os atributos redundantes.
 
 ### Efeitos normalização
 
@@ -265,7 +316,6 @@ calculo_redundante_norm <- function(dados) {
     R2 = numeric()
   )
 
-  # for (col1 in colnames(dados)) {
   for (col1 in
     c(
       "NU_NOTA_CH_normz", "NU_NOTA_CH_norm01",
@@ -345,13 +395,14 @@ head(rlt_redun_original)
 
 ### Conclusão
 
-Concluí-se que o uso das normalizações manteve o mesmo significado dos coeficientes quando comparado ao uso dos dados originais
-
-
+Concluí-se que o uso das normalizações manteve o mesmo significado dos
+coeficientes quando comparado ao uso dos dados originais
 
 ## Manipulação de dados faltantes
 
-Primeiramente, vamos analisar o nosso dataset para encontrar quais e quantos são os dados faltantes:
+Valores faltantes são dados que não foram preenchidos para um certo
+atributos Primeiramente, vamos analisar o nosso dataset para encontrar
+quais e quantos são os dados faltantes:
 
 ```{r}
 # conta a quantidade de dados NA
@@ -366,13 +417,31 @@ na_count <- filter(na_count, count > 0) %>%
   select(-count) %>%
   arrange(desc(percentage))
 
-na_count
+na_count%>%
+  DT::datatable()
+
 ```
 
-Apesar de incrivelmente alto, esse número condiz com os dados do INEP, que afirma que em torno de 48% dos inscritos não compareceram à prova. Vale lembrar que essa aplicação ocorreu em janeiro de 2021, época em que a pandemia de coronavírus ainda era severa no Brasil. Ainda assim, uma quantidade muito significativa de 78% dos dados relacionados ao local de aplicação não estão disponíveis, não sabemos o motivo.\
-Como a maioria desses dados serve para identificação do local de aplicação, vamos focar na imputação do questionário socioeconômico, já que há linhas onde as pessoas compareceram à prova mas não responderam ao questionário. Dessa forma, também pretendemos reduzir um possível enviesamento ao imputar uma quantidade tão grande de dados.\
-Utilizaremos as questões de 1 a 6 para realizar o tratamento de dados faltantes. Por serem atributos que servem para identificar questões sociais e econômicas de um indivíduo, entendemos que uma abordagem baseada em tendência central pode não ser tão precisa, considerando a complexidade das análises que podem ser feitas a partir do dataset.\
-Sendo assim, vamos utilizar a imputação por HotDeck, disponibilizada no pacote VIM. Nas próximas seções, veremos que esse método obteu um resultado razoável e possui uma execução rápida. Métodos como regressão linear e kNN impute tornam-se inviáveis pelo tamanho do dataset.
+Apesar de incrivelmente alto, esse número condiz com os dados do INEP,
+que afirma que em torno de 48% dos inscritos não compareceram à prova.
+Vale lembrar que essa aplicação ocorreu em janeiro de 2021, época em que
+a pandemia de coronavírus ainda era severa no Brasil. Ainda assim, uma
+quantidade muito significativa de 78% dos dados relacionados ao local de
+aplicação não estão disponíveis, não sabemos o motivo.\
+Como a maioria desses dados serve para identificação do local de
+aplicação, vamos focar na imputação do questionário socioeconômico, já
+que há linhas onde as pessoas compareceram à prova mas não responderam
+ao questionário. Dessa forma, também pretendemos reduzir um possível
+enviesamento ao imputar uma quantidade tão grande de dados.\
+Utilizaremos as questões de 1 a 6 para realizar o tratamento de dados
+faltantes. Por serem atributos que servem para identificar questões
+sociais e econômicas de um indivíduo, entendemos que uma abordagem
+baseada em tendência central pode não ser tão precisa, considerando a
+complexidade das análises que podem ser feitas a partir do dataset.\
+Sendo assim, vamos utilizar a imputação por HotDeck, disponibilizada no
+pacote VIM. Nas próximas seções, veremos que esse método obteu um
+resultado razoável e possui uma execução rápida. Métodos como regressão
+linear e kNN impute tornam-se inviáveis pelo tamanho do dataset.
 
 ```{r}
 # Não é possível aplicar o algoritmo kNN
@@ -383,27 +452,17 @@ enem.df <- hotdeck(enem.df, c("Q001", "Q002", "Q003", "Q004", "Q005", "Q006"), i
 head(enem.df)
 ```
 
-
-
 ## Manipulação de dados ruídosos e outliers
 
-dixon so funciona para ate 20 observaçeos
+Dados ruídos são valores que estão distorcidos ou corrompidos e que não
+podem ser entendidos dentro do contexto daquela atributo.
 
-Verificando se existe algum valor que distoa dos dados aceitos para cada coluna 
-numérica
-```{r}
-uniq.df <- function(dados){
-     for (col in colnames(dados)) {
-      li <- unique(dados[,col])
-      print(col)
-      print(li)
-        
-      }
-}
-uniq.df(enem.df_numeric)
-
-```
-Todos os atributos estão dentro dos valores aceitos de cada atributo.
+Abaixo foram utilizados os testes Grubb e Rosner, o teste Dixon não foi
+utilizado pois aceita apenas conjunto com tamanho menor que 30
+observações. O teste Grubbs permite detectar se o maior ou menor valor
+no conjunto de dados é um outlier, o teste Rosner faz o mesmo mas
+detectar diversos outliers de uma vez. Para a simplicidade do projeto, o
+número de outliers escolhido para o teste de Rosner detectar é 1.
 
 ```{r}
 # removendo binario e codigos
@@ -445,7 +504,8 @@ out_grub_rosner <- function(dados) {
     g_p <- g$p.value
     g_v <- g$alternative
     
-    resultado <- add_row( resultado,atr= col1, grubb_p = g_p, grubb_v = g_v, rosner_v = r_v, rosner_out = r_o)
+    resultado <- add_row( resultado,atr= col1, grubb_p = g_p, grubb_v = g_v, 
+                          rosner_v = r_v, rosner_out = r_o)
   }
   return(resultado)
 }
@@ -456,17 +516,28 @@ rst_quant
 rslt_out_grub_rosner
 
 ```
+
 ### Análise dos resultados
 
-Vantagens de cada método:
+No teste de Grubb os valores retornados são: o valor que detectado no
+atributo e seu p-value, nós usamos o p-value para determinar o quão
+forte ou o quão fraco é a evidência. No teste de Rosner é parecido, é
+retornado um valor dentro do atributo e se aquela evidência é verdadeira
+ou não
 
-Desvantagens de cada método:
-
-
+Considerações \* O teste rosner é mais apropriado para conjunto de dados
+maiores \* O teste rosner detecta mais de um outlier \* Os dois testes
+possuem pouca diferença e podem ser usados para investigar os outliers
+de forma eficiente.
 
 ## Amostragem e técnicas de imputação
 
-Vamos selecionar 30% das amostras que não contém valores faltantes no dataset usando as funções `drop_na` e `sample_frac`. Em seguida, vamos selecionar a coluna `NU_NOTA_CH`, com as notas de ciências humanas, para realizar a imputação e comparação com diferentes métodos. Para a inserção de valores NA, vamos utilizar a função `rbinom` para acessar 2% dos valores através de uma distribuição de Bernoulli e trocá-los por NA.
+Vamos selecionar 30% das amostras que não contém valores faltantes no
+dataset usando as funções `drop_na` e `sample_frac`. Em seguida, vamos
+selecionar a coluna `NU_NOTA_CH`, com as notas de ciências humanas, para
+realizar a imputação e comparação com diferentes métodos. Para a
+inserção de valores NA, vamos utilizar a função `rbinom` para acessar 2%
+dos valores através de uma distribuição de Bernoulli e trocá-los por NA.
 
 ```{r}
 set.seed(42)
@@ -480,7 +551,8 @@ valores_na <- is.na(amostragem$NOTA_NA)
 sum(valores_na == TRUE)
 ```
 
-Para as técnicas de imputação, vamos analisar as seguintes estratégias: - Média - Mediana - Aleatória - Regressão linear - Hotdeck
+Para as técnicas de imputação, vamos analisar as seguintes
+estratégias: - Média - Mediana - Aleatória - Regressão linear - Hotdeck
 
 ```{r}
 # Média
@@ -510,7 +582,8 @@ amostragem <- mutate(amostragem, NOTA_CH_RANDOM = NOTA_NA)
 amostragem$NOTA_CH_RANDOM[is.na(amostragem$NOTA_CH_RANDOM)] <- runif(1, 0, 1000)
 ```
 
-Para a regressão linear, vamos utilizar as notas nas outras provas como fixas e deixar a nota em Ciências Humanas como variável.
+Para a regressão linear, vamos utilizar as notas nas outras provas como
+fixas e deixar a nota em Ciências Humanas como variável.
 
 ```{r}
 # Regressão linear
@@ -558,32 +631,38 @@ analise_imputacao[order(analise_imputacao$cor_values, decreasing = TRUE),]
 
 ```
 
-A partir da análise, obtemos um valor de correlação acima de 99% para as imputações por média, mediana e regressão, sendo que o maior valor foi para a regressão linear, o que indica que, para esses dados e nessas condições, este é o melhor método.
+A partir da análise, obtemos um valor de correlação acima de 99% para as
+imputações por média, mediana e regressão, sendo que o maior valor foi
+para a regressão linear, o que indica que, para esses dados e nessas
+condições, este é o melhor método.
 
 ## Redução de dados
 
-Como nosso dataset possui diversos atributos categórico e textuais, vamos reutilizar a variável `enem.df_numeric` das primeiras etapas, que seleciona apenas as colunas numéricas da base de dados.
+Como nosso dataset possui diversos atributos categórico e textuais,
+vamos reutilizar a variável `enem.df_numeric` das primeiras etapas, que
+seleciona apenas as colunas numéricas da base de dados.
 
 ```{r}
-enem.df_pca <- as.data.frame(enem.df %>% select(where(is.numeric), -NU_ANO, -NU_INSCRICAO))
-# summary(prcomp(na.omit(enem.df_pca), center = TRUE, scale. = TRUE))
+enem.df_pca <- as.data.frame(enem.df %>% select(where(is.numeric), -NU_INSCRICAO))
 
-# Error in prcomp.default(na.omit(enem.df_pca), center = TRUE, scale. = TRUE) : 
-# cannot rescale a constant/zero column to unit variance
 ```
 
-O comando retorna um erro relacionado à divisão por 0 no processo de escala e, por isso, foi comentado para não gerar problemas na execução dos chunks. Uma ideia para entender o que está acontecendo é verificar se temos atributos com variância 0 no dataset.
+O comando retorna um erro relacionado à divisão por 0 no processo de
+escala e, por isso, foi comentado para não gerar problemas na execução
+dos chunks. Uma ideia para entender o que está acontecendo é verificar
+se temos atributos com variância 0 no dataset.
 
 ```{r}
 which(apply(na.omit(enem.df_pca), 2, var)==0)
 ```
 
-Ou seja, esses atributos não possuem variância e podem atrapalhar nossa análise, além de impossibilitar uma escala na exibição do gráfico - o que gera a divisão por 0 e o erro do prcomp.
+Ou seja, esses atributos não possuem variância e podem atrapalhar nossa
+análise, além de impossibilitar uma escala na exibição do gráfico - o
+que gera a divisão por 0 e o erro do prcomp.
 
 ```{r}
 enem.df_pca <- select(enem.df_pca, -TP_ST_CONCLUSAO, -TP_ANO_CONCLUIU,
-                          -IN_TREINEIRO, -TP_PRESENCA_CH, -TP_PRESENCA_CN,
-                          -TP_PRESENCA_LC, -TP_PRESENCA_MT)
+                          -IN_TREINEIRO, -TP_PRESENCA_CH)
 
 pca <-prcomp(na.omit(enem.df_pca), scale. = TRUE, center = TRUE)
 summary(pca)
@@ -595,8 +674,12 @@ ggbiplot(pca, alpha=0)
 
 ### Análise dos resultados
 
-Podemos visualizar que o PCA passa de 70% só do componente 9 e só atinge 90% no 14º componente. Nessas condições e considerando o tamanho do dataset utilizado, o PCA pode não ser a melhor ferramenta para redução de dimensionalidade.\
-Podemos pensar em outras formas de análise, como MDS, porém esta não é possível dada a dimensão do dataset.
+Podemos visualizar que o PCA passa de 70% só do componente 9 e só atinge
+90% no 14º componente. Nessas condições e considerando o tamanho do
+dataset utilizado, o PCA pode não ser a melhor ferramenta para redução
+de dimensionalidade.\
+Podemos pensar em outras formas de análise, como MDS, porém esta não é
+possível dada a dimensão do dataset.
 
 ```{r}
 # cmdscale(dist(enem.df_pca), eig=TRUE, k=2)
@@ -606,24 +689,136 @@ Podemos pensar em outras formas de análise, como MDS, porém esta não é poss�
 
 # Visualização dos dados
 
+**Questão 1** Qual é situação da presença na prova no contexto da
+pergunta Q024: Na sua residência tem computador?
+
 ```{r}
 conj_1 <- enem.df
 
-conj_1
-
 ggplot(conj_1) +
-  geom_histogram(aes(x= TP_PRESENCA_CH, fill=Q024), position = position_dodge(), stat="count")
+  geom_histogram(aes(x= TP_PRESENCA_CH, fill=Q024), position = position_dodge(), stat="count") +
+   labs(x = "Presença", y = "Quantidade", fill = 'Na sua residência tem computador?')+
+  scale_fill_discrete(labels=c('Não','Sim, um','Sim, dois','Sim, três','Sim, quatro ou mais'))
+  
 
 ```
 
+**Questão 2:** Qual a média de desempenho na prova por cor/raça
+declarada?\
+Vamos utilizar um boxplot para analisar, além da média, a distribuição
+de pontuações para cada cor/raça declarada no momento da inscrição da
+prova. Para isso, também vamos criar uma função para calcular a média
+das 4 provas e redação, o que significa que apenas poderemos usar os
+participantes que compareceram à prova.
+
+```{r}
+# filtro pelos candidatos presentes na prova
+# e seleção apenas dos atributos de interesse
+notas_cor_raca <- filter(enem.df, TP_PRESENCA_CH == 1 & TP_STATUS_REDACAO == 1) %>%
+                  select(NU_NOTA_CN, NU_NOTA_CH, NU_NOTA_LC,
+                    NU_NOTA_MT, NU_NOTA_REDACAO, TP_COR_RACA)
+
+# rotulando dados categóricos
+notas_cor_raca$TP_COR_RACA <- factor(notas_cor_raca$TP_COR_RACA,
+                                levels = c(0,1,2,3,4,5,6),
+                                labels=c('Não declarado',
+                                'Branca','Preta',
+                                'Parda','Amarela',
+                                'Indígena',
+                                'Não dispõe da informação'))
+
+# função de média simples para a prova
+enem_mean <- function(CN, CH, LC, MT, RD) {
+  (CN+CH+LC+MT+RD)/5
+}
+
+# conjunto contendo apenas média e raça
+dados_PLOT2 <- summarise(notas_cor_raca, "Cor/Raça" = TP_COR_RACA,
+                      "Nota média" = enem_mean(NU_NOTA_CN,
+                      NU_NOTA_CH, NU_NOTA_LC, NU_NOTA_MT, NU_NOTA_REDACAO))
+
+media_geral <- mean(dados_PLOT2$`Nota média`)
+
+# boxplot com uma linha na direção da média geral da prova
+ggplot(data = dados_PLOT2) +
+  geom_boxplot(outlier.size=.7, mapping = aes(x = `Cor/Raça`, y = `Nota média`)) +
+  geom_hline(yintercept = media_geral, color = "blue")
+```
+
+**Questão 3:** Qual a proporção entre candidatos presentes e ausentes na
+prova por faixa de renda mensal?\
+Nessa questão, utilizaremos o inverso da questão anterior - apenas os
+dados com TP_PRESENCA = 0, lembrando que a informação sobre renda
+familiar encontra-se na questão 006 do formulário socioeconômico.
+
+```{r}
+# removendo candidatos eliminados da prova para melhorar a visualização
+presenca_renda <- filter(enem.df, TP_PRESENCA_CH < 2) %>%
+                  select(TP_PRESENCA_CH, Q006)
+
+# rotulando dados categóricos
+presenca_renda$TP_PRESENCA_CN <- factor(presenca_renda$TP_PRESENCA_CH, levels = c(0,1),
+                                    labels=c('Faltou à prova',
+                                             'Presente na prova'))
+
+# rotulando dados categóricos
+presenca_renda$Q006 <- factor(presenca_renda$Q006,levels =  c('A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q'),
+                         labels=c('Nenhuma renda.',
+                                  'Até R$ 1.045,00',
+                                  'De R$ 1.045,01 até R$ 1.567,50',
+                                  'De R$ 1.567,51 até R$ 2.090,00',
+                                  'De R$ 2.090,01 até R$ 2.612,50',
+                                  'De R$ 2.612,51 até R$ 3.135,00',
+                                  'De R$ 3.135,01 até R$ 4.180,00',
+                                  'De R$ 4.180,01 até R$ 5.225,00',
+                                  'De R$ 5.225,01 até R$ 6.270,00',
+                                  'De R$ 6.270,01 até R$ 7.315,00',
+                                  'De R$ 7.315,01 até R$ 8.360,00',
+                                  'De R$ 8.360,01 até R$ 9.405,00',
+                                  'De R$ 9.405,01 até R$ 10.450,00',
+                                  'De R$ 10.450,01 até R$ 12.540,00',
+                                  'De R$ 12.540,01 até R$ 15.675,00',
+                                  'De R$ 15.675,01 até R$ 20.900,00',
+                                  'Acima de R$ 20.900,00'))
+
+# plot de histograma separando dados por renda familiar
+ggplot(presenca_renda) +
+  geom_histogram(aes(x= TP_PRESENCA_CN, fill=Q006), position = position_dodge(), stat="count") +
+  labs(x = "Presença", y = "Candidatos")
+```
+
+**Questão 4:** Qual o desempenho médio das notas de redação por estado?
+Para responder essa questão, vamos precisar dos dados de nota de redação
+e estado da aplicação da prova. Vamos agrupar os valores por estado e
+utilizar a função `mean()` para calcular a média por estado, através do
+`summarise()`.
+
+```{r}
+# selecionando apenas redações válidas
+redacao_estado <- filter(enem.df, TP_STATUS_REDACAO == 1) %>%
+                  select(NU_NOTA_REDACAO, SG_UF_PROVA) %>%
+                  group_by(SG_UF_PROVA)
+
+# cálculo de nota média por estado
+redacao_estado <- summarise(redacao_estado, Media = mean(NU_NOTA_REDACAO))
+
+
+ggplot(redacao_estado) +
+  geom_bar(stat="identity",
+           mapping = aes(x=SG_UF_PROVA, y=Media, fill=SG_UF_PROVA)) +
+  labs(x = "Estado", y = "Nota média de redação", fill = "Estado")
+```
+
 # Visualização de dados em forma de hierarquia
+
+A visualização de dados em forma de hieraquia escolhida foi representar
+a quantidade de pessoas que faltaram na prova por município e estado.
+
 ```{r}
 conj_hie <- enem.df %>%
   filter(TP_PRESENCA_CH == 0) %>%
   group_by(SG_UF_PROVA, NO_MUNICIPIO_PROVA  ) %>%
   summarise(faltantes= n())
-
-conj_hie  
 
 treemap(conj_hie,
         index=c("SG_UF_PROVA", "NO_MUNICIPIO_PROVA"),
@@ -631,7 +826,6 @@ treemap(conj_hie,
         )
 
 ```
-
 
 # Referências
 
