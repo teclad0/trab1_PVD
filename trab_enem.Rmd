@@ -683,7 +683,24 @@ ggplot(presenca_renda) +
   labs(x = "Presença", y = "Candidatos")
 ```
 
-**Questão 4:** [TODO Igor]
+**Questão 4:** Qual o desempenho médio das notas de redação por estado?
+Para responder essa questão, vamos precisar dos dados de nota de redação e estado da aplicação da prova. Vamos agrupar os valores por estado e utilizar a função `mean()` para calcular a média por estado, através do `summarise()`.
+
+```{r}
+# selecionando apenas redações válidas
+redacao_estado <- filter(enem.df, TP_STATUS_REDACAO == 1) %>%
+                  select(NU_NOTA_REDACAO, SG_UF_PROVA) %>%
+                  group_by(SG_UF_PROVA)
+
+# cálculo de nota média por estado
+redacao_estado <- summarise(redacao_estado, Media = mean(NU_NOTA_REDACAO))
+
+
+ggplot(redacao_estado) +
+  geom_bar(stat="identity",
+           mapping = aes(x=SG_UF_PROVA, y=Media, fill=SG_UF_PROVA)) +
+  labs(x = "Estado", y = "Nota média de redação", fill = "Estado")
+```
 
 # Referências
 
